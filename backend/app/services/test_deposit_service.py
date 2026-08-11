@@ -12,16 +12,17 @@ from app.services.ledger_service import LedgerService
 
 
 class TestDepositService:
-    """Development-only minting service.
+    """Development-only funding service.
 
-    A test deposit is represented as a transfer from a dedicated system
-    treasury account to the customer's account. This keeps the ledger
-    balanced and makes the test funds visible in reconciliation.
+    Test funds are transferred from a dedicated system treasury account to
+    the customer's account. This keeps each test deposit represented by a
+    balanced ledger transaction.
     """
 
     SYSTEM_EMAIL = "system-test-treasury@bitnova.local"
     SYSTEM_ACCOUNT_TYPE = "SYSTEM_TREASURY"
     CUSTOMER_ACCOUNT_TYPE = "CUSTOMER"
+    INITIAL_TREASURY_BALANCE = Decimal("1000000000")
 
     @staticmethod
     async def _get_or_create_system_user(db: AsyncSession) -> User:
@@ -52,6 +53,7 @@ class TestDepositService:
         user_id: UUID,
         asset_id: UUID,
         account_type: str,
+        initial_balance: Decimal = Decimal("0"),
     ) -> Account:
         result = await db.execute(
             select(Account)
@@ -69,7 +71,7 @@ class TestDepositService:
                 user_id=user_id,
                 asset_id=asset_id,
                 account_type=account_type,
-                available_balance=Decimal("0"),
+                available_balance=initial_balance,
                 locked_balance=Decimal("0"),
                 status="ACTIVE",
             )
@@ -121,6 +123,7 @@ class TestDepositService:
             user_id=treasury_user.id,
             asset_id=asset_id,
             account_type=TestDepositService.SYSTEM_ACCOUNT_TYPE,
+            initial_balance=TestDepositService.INITIAL_TREASURY_BALANCE,
         )
 
         customer = await TestDepositService._get_or_create_account(
