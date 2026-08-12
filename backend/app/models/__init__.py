@@ -6,6 +6,7 @@ from app.models.ledger_transaction import LedgerTransaction
 from app.models.ledger_entry import LedgerEntry
 from app.models.idempotency import IdempotencyRecord
 from app.models.session import UserSession
+from app.models.wallet import Wallet
 
 __all__ = [
     "Base",
@@ -16,4 +17,5 @@ __all__ = [
     "LedgerEntry",
     "IdempotencyRecord",
     "UserSession",
+    "Wallet",
 ]
