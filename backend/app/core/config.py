@@ -25,9 +25,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
+    # internal_test_deposit_key: str
+
     # Development-only endpoint protection. Keep this out of source control
     # and provide it through backend/.env.
-    internal_test_deposit_key: str = ""
+    internal_test_deposit_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
