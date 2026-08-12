@@ -2,14 +2,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (APIRouter, Depends, HTTPException, Request, status)
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.rate_limiter import login_rate_limiter
 from app.api.dependencies import get_db
 from app.core.config import settings
 from app.models.user import User
@@ -184,11 +184,48 @@ async def register(
     response_model=TokenResponse,
 )
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
     email = form_data.username.strip().lower()
 
+        # --------------------------------------------------------
+    # Login brute-force protection
+    # --------------------------------------------------------
+
+    client_ip = (
+        request.client.host
+        if request.client
+        else "unknown"
+    )
+
+    # Combine IP + email so an attacker cannot simply
+    # rotate usernames from the same address.
+    rate_limit_key = (
+        f"login:{client_ip}:{email}"
+    )
+
+    allowed, retry_after = (
+        login_rate_limiter.check(
+            rate_limit_key
+        )
+    )
+
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "Too many login attempts. "
+                "Please try again later."
+            ),
+            headers={
+                "Retry-After": str(
+                    retry_after
+                ),
+            },
+        )
+    
     result = await db.execute(
         select(User).where(
             User.email == email
@@ -240,6 +277,10 @@ async def login(
         user.last_login_at = datetime.now(timezone.utc)
 
     await db.commit()
+
+    login_rate_limiter.clear(
+        rate_limit_key
+    )
 
     return TokenResponse(
         access_token=access_token,
