@@ -10,7 +10,6 @@ class AssetResponse(BaseModel):
     symbol: str
     name: str
     asset_type: str
-    network: str | None
     decimal_places: int
     is_active: bool
     deposit_enabled: bool

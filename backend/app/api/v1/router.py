@@ -9,6 +9,7 @@ from app.api.v1.ledger import router as ledger_router
 from app.api.v1.transfers import router as transfers_router
 from app.api.v1.users import router as users_router
 from app.api.v1.wallets import router as wallets_router
+from app.api.v1.wallet_addresses import router as wallet_addresses_router
 
 
 api_router = APIRouter()
@@ -22,3 +23,4 @@ api_router.include_router(ledger_router)
 api_router.include_router(transfers_router)
 api_router.include_router(users_router)
 api_router.include_router(wallets_router)
+api_router.include_router(wallet_addresses_router)

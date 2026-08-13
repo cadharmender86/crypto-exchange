@@ -7,6 +7,7 @@ from app.models.ledger_entry import LedgerEntry
 from app.models.idempotency import IdempotencyRecord
 from app.models.session import UserSession
 from app.models.wallet import Wallet
+from app.models.wallet_address import WalletAddress
 
 __all__ = [
     "Base",
@@ -18,4 +19,5 @@ __all__ = [
     "IdempotencyRecord",
     "UserSession",
     "Wallet",
+    "WalletAddress",
 ]
