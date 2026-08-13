@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from urllib import response
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,14 +45,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         ] = "no-referrer"
 
         # Basic Content Security Policy
-        response.headers[
-            "Content-Security-Policy"
-        ] = (
-            "default-src 'self'; "
-            "base-uri 'self'; "
-            "frame-ancestors 'none'; "
-            "object-src 'none'"
-        )
+        if is_production:
+    # Strict CSP for production.
+            response.headers[
+                "Content-Security-Policy"
+            ] = (
+                "default-src 'self'; "
+                "base-uri 'self'; "
+                "frame-ancestors 'none'; "
+                "object-src 'none'"
+            )
+        else:
+            # Development Swagger UI requires its CDN assets
+    # and FastAPI's inline Swagger initialization script.
+            response.headers[
+                "Content-Security-Policy"
+            ] = (
+                "default-src 'self'; "
+                "base-uri 'self'; "
+                "frame-ancestors 'none'; "
+                "object-src 'none'; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https://fastapi.tiangolo.com"
+            )    
 
         # HSTS should only be enabled when the API is
         # actually served through HTTPS.
