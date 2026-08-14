@@ -28,15 +28,7 @@ class ApiClient {
     Map<String, String> fields, {
     bool authenticated = false,
   }) async {
-    final headers = <String, String>{
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/json',
-    };
-    if (authenticated) {
-      final token = await _tokenStorage.accessToken();
-      if (token != null) headers['Authorization'] = 'Bearer $token';
-    }
-
+    final headers = _headers(authenticated: authenticated, contentType: 'application/x-www-form-urlencoded');
     final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: headers,
@@ -45,18 +37,43 @@ class ApiClient {
     return _decode(response);
   }
 
-  Future<dynamic> get(String path, {bool authenticated = true}) async {
-    final headers = <String, String>{'Accept': 'application/json'};
-    if (authenticated) {
-      final token = await _tokenStorage.accessToken();
-      if (token != null) headers['Authorization'] = 'Bearer $token';
-    }
-
-    final response = await _client.get(
+  Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic> body, {
+    bool authenticated = true,
+  }) async {
+    final headers = _headers(authenticated: authenticated, contentType: 'application/json');
+    final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: headers,
+      body: jsonEncode(body),
+    );
+    return _decode(response);
+  }
+
+  Future<dynamic> get(String path, {bool authenticated = true}) async {
+    final response = await _client.get(
+      Uri.parse('${ApiConfig.baseUrl}$path'),
+      headers: _headers(authenticated: authenticated),
     );
     return _decodeAny(response);
+  }
+
+  Future<Map<String, String>> _headers({
+    required bool authenticated,
+    String contentType = 'application/json',
+  }) async {
+    final headers = <String, String>{
+      'Content-Type': contentType,
+      'Accept': 'application/json',
+    };
+    if (authenticated) {
+      final token = await _tokenStorage.accessToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+    return headers;
   }
 
   dynamic _decodeAny(http.Response response) {
