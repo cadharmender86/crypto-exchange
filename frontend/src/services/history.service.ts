@@ -1,11 +1,9 @@
-import apiClient from './apiClient';
+import { apiClient } from './apiClient';
 
 export const getTradeHistory = async () => {
-  const response = await apiClient.get('/trades/history');
-  return response.data;
+  return apiClient('/trades/history');
 };
 
 export const getTransactionHistory = async () => {
-  const response = await apiClient.get('/transactions/history');
-  return response.data;
+  return apiClient('/transactions/history');
 };
