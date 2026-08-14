@@ -8,6 +8,7 @@ import CoinBalanceTable from "./CoinBalanceTable";
 import AccordionSection from "./AccordionSection";
 import OpenOrders from "./OpenOrders";
 import TradeHistory from "./TradeHistory";
+import TransactionHistory from "./TransactionHistory";
 import WalletSummary from "../wallet/WalletSummary";
 
 export default function DashboardLayout() {
@@ -51,6 +52,10 @@ export default function DashboardLayout() {
             <TradeHistory />
           </AccordionSection>
         </div>
+
+        <AccordionSection title="Transaction History">
+          <TransactionHistory />
+        </AccordionSection>
 
         <AccordionSection title="INR Deposit / Withdraw Details">
           <p className="text-gray-400">
