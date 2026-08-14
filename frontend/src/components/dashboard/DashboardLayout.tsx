@@ -8,6 +8,7 @@ import CoinBalanceTable from "./CoinBalanceTable";
 import AccordionSection from "./AccordionSection";
 import OpenOrders from "./OpenOrders";
 import TradeHistory from "./TradeHistory";
+import WalletSummary from "../wallet/WalletSummary";
 
 export default function DashboardLayout() {
   return (
@@ -21,6 +22,12 @@ export default function DashboardLayout() {
           netCost={700000}
           profitLoss={61000}
           tradingVolume={2500000}
+        />
+
+        <WalletSummary
+          totalValue="₹7,61,000"
+          available="₹50,000"
+          locked="₹10,000"
         />
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
