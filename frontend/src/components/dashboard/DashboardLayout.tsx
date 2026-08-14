@@ -15,6 +15,7 @@ import TransactionHistory from "./TransactionHistory";
 import WalletSummary from "../wallet/WalletSummary";
 import AccordionSection from "./AccordionSection";
 import DashboardHeader from "./DashboardHeader";
+import PortfolioAnalytics from "./PortfolioAnalytics";
 
 export default function DashboardLayout() {
   return (
@@ -30,9 +31,7 @@ export default function DashboardLayout() {
         <div className="mt-6 space-y-6">
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">Dashboard</h1>
-            <p className="text-sm text-gray-400">
-              Manage your portfolio, wallet and trading activity
-            </p>
+            <p className="text-sm text-gray-400">Manage your portfolio, wallet and trading activity</p>
           </div>
 
           <DashboardStats />
@@ -44,6 +43,8 @@ export default function DashboardLayout() {
             tradingVolume={2500000}
           />
 
+          <PortfolioAnalytics />
+
           <WalletSummary
             totalValue="₹7,61,000"
             available="₹50,000"
@@ -51,34 +52,19 @@ export default function DashboardLayout() {
           />
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-            <div className="xl:col-span-5">
-              <EasyBuySell />
-            </div>
-            <div className="xl:col-span-3">
-              <INRBalanceCard />
-            </div>
-            <div className="xl:col-span-4">
-              <QuickOrders />
-            </div>
+            <div className="xl:col-span-5"><EasyBuySell /></div>
+            <div className="xl:col-span-3"><INRBalanceCard /></div>
+            <div className="xl:col-span-4"><QuickOrders /></div>
           </div>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-            <div className="xl:col-span-2 min-w-0">
-              <CoinBalanceTable />
-            </div>
-            <div className="min-w-0">
-              <TradeHistory />
-            </div>
+            <div className="xl:col-span-2 min-w-0"><CoinBalanceTable /></div>
+            <div className="min-w-0"><TradeHistory /></div>
           </div>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <AccordionSection title="Open Orders">
-              <OpenOrders />
-            </AccordionSection>
-
-            <AccordionSection title="Transaction History">
-              <TransactionHistory />
-            </AccordionSection>
+            <AccordionSection title="Open Orders"><OpenOrders /></AccordionSection>
+            <AccordionSection title="Transaction History"><TransactionHistory /></AccordionSection>
           </div>
         </div>
       </section>
