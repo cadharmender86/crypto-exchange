@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cancelOrder, getOrders, OrderResponse } from "@/services/order.service";
+import { cancelOrder, getOrder, OrderResponse } from "@/services/order.service";
 
 export default function OrderDetailsPage() {
   const params = useParams();
@@ -13,9 +13,8 @@ export default function OrderDetailsPage() {
   const [loadingCancel, setLoadingCancel] = useState(false);
 
   async function loadOrder() {
-    const orders = await getOrders();
-    const found = orders.find((item) => item.id === id);
-    setOrder(found || null);
+    const data = await getOrder(id);
+    setOrder(data);
   }
 
   async function handleCancel() {
@@ -33,6 +32,12 @@ export default function OrderDetailsPage() {
 
   useEffect(() => {
     loadOrder();
+
+    const timer = setInterval(() => {
+      loadOrder();
+    }, 5000);
+
+    return () => clearInterval(timer);
   }, [id]);
 
   if (!order) {
@@ -53,20 +58,26 @@ export default function OrderDetailsPage() {
           <Link href="/orders" className="text-blue-400">Back</Link>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <div><span className="text-gray-400">Order ID:</span> {order.id}</div>
-          <div><span className="text-gray-400">Pair:</span> {order.symbol}</div>
-          <div><span className="text-gray-400">Side:</span> {order.side}</div>
-          <div><span className="text-gray-400">Amount:</span> {order.amount}</div>
-          <div><span className="text-gray-400">Status:</span> {order.status}</div>
+        <div className="mt-6 grid gap-4 rounded-xl bg-black/20 p-5">
+          <div>Order ID: {order.id}</div>
+          <div>Pair: {order.symbol}</div>
+          <div>Side: {order.side}</div>
+          <div>Amount: {order.amount}</div>
+          <div>Status: {order.status}</div>
+          <div>Filled Quantity: {order.filled_amount || "0"}</div>
+          <div>Remaining Quantity: {order.remaining_amount || order.amount}</div>
+          <div>Average Price: {order.average_price || "-"}</div>
+          <div>Fee: {order.fee || "-"}</div>
         </div>
 
         <section className="mt-8 rounded-xl bg-black/20 p-5">
           <h2 className="font-semibold">Execution Timeline</h2>
           <div className="mt-4 space-y-3 text-sm text-gray-300">
             <p>✓ Order Created</p>
-            <p>{order.status === "OPEN" ? "⏳ Waiting for execution" : "✓ Order processed"}</p>
+            <p>{["OPEN", "PENDING"].includes(order.status) ? "⏳ Waiting for execution" : "✓ Matching completed"}</p>
+            <p>{order.status === "PARTIALLY_FILLED" ? "🟡 Partially Filled" : ""}</p>
             <p>{order.status === "FILLED" ? "✓ Trade Completed" : ""}</p>
+            <p>{order.status === "CANCELLED" ? "✕ Cancelled" : ""}</p>
           </div>
         </section>
 
