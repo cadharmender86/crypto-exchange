@@ -17,19 +17,21 @@ import DashboardHeader from "./DashboardHeader";
 
 export default function DashboardLayout() {
   return (
-    <main className="flex min-h-screen w-full bg-[#070b10] text-white">
-      <Sidebar />
+    <main className="flex min-h-screen w-full overflow-hidden bg-[#070b10] text-white">
+      <aside className="hidden lg:block">
+        <Sidebar />
+      </aside>
 
-      <section className="flex-1 overflow-x-hidden p-4 md:p-6">
+      <section className="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
         <DashboardHeader />
         <AdvertisementBanner />
 
         <div className="mt-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Dashboard</h1>
-              <p className="text-sm text-gray-400">Welcome back to BitNova</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold md:text-3xl">Dashboard</h1>
+            <p className="text-sm text-gray-400">
+              Manage your portfolio, wallet and trading activity
+            </p>
           </div>
 
           <DashboardStats />
@@ -47,29 +49,28 @@ export default function DashboardLayout() {
             locked="₹10,000"
           />
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
             <div className="xl:col-span-5">
               <EasyBuySell />
             </div>
-
             <div className="xl:col-span-3">
               <INRBalanceCard />
             </div>
-
             <div className="xl:col-span-4">
               <QuickOrders />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <div className="xl:col-span-2">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+            <div className="xl:col-span-2 min-w-0">
               <CoinBalanceTable />
             </div>
-
-            <TradeHistory />
+            <div className="min-w-0">
+              <TradeHistory />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <AccordionSection title="Open Orders">
               <OpenOrders />
             </AccordionSection>
