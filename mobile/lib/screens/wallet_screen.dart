@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/wallet.dart';
 import '../services/account_service.dart';
+import 'deposit_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -75,6 +76,10 @@ class _WalletScreenState extends State<WalletScreen> {
                     title: Text(wallet.walletType),
                     subtitle: Text('Wallet ID: ${wallet.id}\nStatus: ${wallet.status}'),
                     isThreeLine: true,
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => DepositScreen(wallet: wallet)),
+                    ),
                   ),
                 );
               },
