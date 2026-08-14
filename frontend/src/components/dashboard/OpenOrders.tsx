@@ -1,31 +1,17 @@
 "use client";
 
-const orders = [
-  {
-    pair: "BTC/INR",
-    side: "BUY",
-    type: "LIMIT",
-    price: "₹95,00,000",
-    amount: "0.01 BTC",
-    status: "OPEN",
-  },
-  {
-    pair: "ETH/INR",
-    side: "SELL",
-    type: "MARKET",
-    price: "₹3,20,000",
-    amount: "1 ETH",
-    status: "FILLED",
-  },
-];
+import { useOrders } from "@/hooks/useOrders";
 
 export default function OpenOrders() {
+  const { orders, loading } = useOrders();
+
+  if (loading) {
+    return <div className="rounded-xl bg-[#111318] p-6 text-gray-400">Loading orders...</div>;
+  }
+
   return (
     <section className="rounded-xl border border-gray-800 bg-[#111318] p-6">
-      <h2 className="mb-5 text-lg font-semibold text-white">
-        Open Orders
-      </h2>
-
+      <h2 className="mb-5 text-lg font-semibold text-white">Open Orders</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-300">
           <thead className="border-b border-gray-700 text-gray-400">
@@ -39,12 +25,10 @@ export default function OpenOrders() {
             </tr>
           </thead>
           <tbody>
-            {orders.map((order, index) => (
+            {(orders ?? []).map((order: any, index: number) => (
               <tr key={index} className="border-b border-gray-800">
                 <td className="p-3 text-white">{order.pair}</td>
-                <td className={`p-3 ${order.side === "BUY" ? "text-green-400" : "text-red-400"}`}>
-                  {order.side}
-                </td>
+                <td className={`p-3 ${order.side === "BUY" ? "text-green-400" : "text-red-400"}`}>{order.side}</td>
                 <td className="p-3">{order.type}</td>
                 <td className="p-3">{order.price}</td>
                 <td className="p-3">{order.amount}</td>
