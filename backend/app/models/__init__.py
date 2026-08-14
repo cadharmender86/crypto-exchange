@@ -8,6 +8,7 @@ from app.models.idempotency import IdempotencyRecord
 from app.models.session import UserSession
 from app.models.wallet import Wallet
 from app.models.wallet_address import WalletAddress
+from app.models.deposit import Deposit
 
 __all__ = [
     "Base",
@@ -20,4 +21,5 @@ __all__ = [
     "UserSession",
     "Wallet",
     "WalletAddress",
+    "Deposit",
 ]
