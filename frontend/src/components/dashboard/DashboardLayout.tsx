@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "../layout/Sidebar";
+import MobileBottomNav from "../layout/MobileBottomNav";
 import AdvertisementBanner from "./AdvertisementBanner";
 import DashboardStats from "./DashboardStats";
 import CryptoPortfolio from "./CryptoPortfolio";
@@ -17,7 +18,7 @@ import DashboardHeader from "./DashboardHeader";
 
 export default function DashboardLayout() {
   return (
-    <main className="flex min-h-screen w-full overflow-hidden bg-[#070b10] text-white">
+    <main className="flex min-h-screen w-full overflow-hidden bg-[#070b10] pb-16 text-white lg:pb-0">
       <aside className="hidden lg:block">
         <Sidebar />
       </aside>
@@ -81,6 +82,8 @@ export default function DashboardLayout() {
           </div>
         </div>
       </section>
+
+      <MobileBottomNav />
     </main>
   );
 }
