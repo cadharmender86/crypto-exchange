@@ -7,6 +7,13 @@ export type CreateOrderRequest = {
   quote_currency: "INR";
 };
 
+export type OrderFill = {
+  id: string;
+  price: string;
+  quantity: string;
+  created_at?: string;
+};
+
 export type OrderResponse = {
   id: string;
   symbol: string;
@@ -37,6 +44,10 @@ export function getOrders() {
 
 export function getOrder(orderId: string) {
   return apiClient<OrderResponse>(`/orders/${orderId}`);
+}
+
+export function getOrderFills(orderId: string) {
+  return apiClient<OrderFill[]>(`/orders/${orderId}/fills`);
 }
 
 export function cancelOrder(orderId: string) {
