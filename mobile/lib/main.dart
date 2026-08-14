@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'screens/home_screen.dart';
+import 'screens/app_shell.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'services/auth_service.dart';
 import 'services/token_storage.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,11 +20,7 @@ class BitNovaApp extends StatelessWidget {
     return MaterialApp(
       title: 'BitNova',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1565C0)),
-        useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
-      ),
+      theme: AppTheme.light(),
       home: const SessionGate(),
     );
   }
@@ -62,11 +59,12 @@ class _SessionGateState extends State<SessionGate> {
       future: _sessionFuture,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        if (snapshot.data == true) return HomeScreen(onLogout: _showLogin);
-        if (_showRegister) {
-          return RegisterScreen(onRegistered: _showLogin, onLogin: _showLogin);
-        }
-        return LoginScreen(onLoggedIn: () => setState(() => _sessionFuture = Future.value(true)), onRegister: _showRegisterScreen);
+        if (snapshot.data == true) return AppShell(onLogout: _showLogin);
+        if (_showRegister) return RegisterScreen(onRegistered: _showLogin, onLogin: _showLogin);
+        return LoginScreen(
+          onLoggedIn: () => setState(() => _sessionFuture = Future.value(true)),
+          onRegister: _showRegisterScreen,
+        );
       },
     );
   }
