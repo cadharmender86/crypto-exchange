@@ -7,6 +7,7 @@ import '../models/wallet.dart';
 import '../services/account_service.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
+import 'wallet_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.onLogout, super.key});
@@ -59,6 +60,12 @@ class _HomeScreenState extends State<HomeScreen> {
     await _dashboardFuture;
   }
 
+  void _openWallets() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const WalletScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +115,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.wallet)),
+                    title: const Text('Wallets'),
+                    subtitle: Text('${data.wallets.length} wallet(s) available'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _openWallets,
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Text('Balances', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
@@ -129,19 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   }),
-                const SizedBox(height: 20),
-                Text('Wallets', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                if (data.wallets.isEmpty)
-                  const Card(child: ListTile(title: Text('No wallets available')))
-                else
-                  ...data.wallets.map((wallet) => Card(
-                        child: ListTile(
-                          leading: const CircleAvatar(child: Icon(Icons.wallet)),
-                          title: Text(wallet.walletType),
-                          subtitle: Text(wallet.status),
-                        ),
-                      )),
                 const SizedBox(height: 20),
                 Text('Markets', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
