@@ -16,7 +16,7 @@ This directory contains detailed documentation for each implementation phase of 
 | 3B | [Financial Integrity & Concurrency](phase-3b-integrity.md) | Completed |
 | 4.1 | [Wallets](phase-4.1-wallets.md) | Completed |
 | 4.2 | [Wallet Addresses](phase-4.2-wallet-addresses.md) | Completed |
-| 4.3 | [Deposits & Withdrawals](phase-4.3-deposits-withdrawals.md) | Planned |
+| 4.3 | [Deposits & Withdrawals](phase-4.3-deposits-withdrawals.md) | In Progress |
 
 ## Phase 1 — Foundation
 
