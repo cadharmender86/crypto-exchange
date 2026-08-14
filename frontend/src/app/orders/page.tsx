@@ -1,7 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cancelOrder, getOrders, OrderResponse } from "@/services/order.service";
+
+function statusClass(status: string) {
+  if (status === "FILLED") return "text-green-400 bg-green-400/10";
+  if (status === "CANCELLED") return "text-red-400 bg-red-400/10";
+  if (status === "PARTIALLY_FILLED") return "text-yellow-400 bg-yellow-400/10";
+  return "text-blue-400 bg-blue-400/10";
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
@@ -30,10 +38,8 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadOrders();
-
     const refresh = () => loadOrders();
     window.addEventListener("order-created", refresh);
-
     return () => window.removeEventListener("order-created", refresh);
   }, []);
 
@@ -42,9 +48,7 @@ export default function OrdersPage() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex justify-between">
           <h1 className="text-2xl font-bold">Orders</h1>
-          <button onClick={loadOrders} className="rounded-lg bg-blue-600 px-4 py-2">
-            Refresh
-          </button>
+          <button onClick={loadOrders} className="rounded-lg bg-blue-600 px-4 py-2">Refresh</button>
         </div>
 
         <section className="rounded-2xl border border-white/10 bg-[#111318] p-5">
@@ -55,19 +59,22 @@ export default function OrdersPage() {
           ) : (
             <div className="space-y-3">
               {orders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between rounded-xl bg-black/20 p-4">
-                  <div>
+                <div key={order.id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-black/20 p-4">
+                  <Link href={`/orders/${order.id}`} className="min-w-[150px]">
                     <p className="font-semibold">{order.symbol}</p>
                     <p className={order.side === "BUY" ? "text-green-400" : "text-red-400"}>{order.side}</p>
-                  </div>
+                  </Link>
+
                   <div className="text-right">
                     <p>{order.amount}</p>
-                    <p className="text-sm text-gray-400">{order.status}</p>
+                    <span className={`inline-block rounded-full px-3 py-1 text-xs ${statusClass(order.status)}`}>
+                      {order.status}
+                    </span>
                     {(order.status === "OPEN" || order.status === "PENDING") && (
                       <button
                         onClick={() => handleCancel(order.id)}
                         disabled={actionId === order.id}
-                        className="mt-2 rounded-lg border border-red-500 px-3 py-1 text-sm text-red-400"
+                        className="ml-3 rounded-lg border border-red-500 px-3 py-1 text-sm text-red-400"
                       >
                         {actionId === order.id ? "Cancelling..." : "Cancel"}
                       </button>
