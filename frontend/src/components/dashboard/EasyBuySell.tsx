@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import CoinSelectorModal from "./CoinSelectorModal";
+import CoinIcon from "../common/CoinIcon";
 
 const popularCoins = ["USDT", "BTC", "ETH", "SOL"];
 
@@ -12,21 +13,20 @@ export default function EasyBuySell() {
 
   return (
     <section className="rounded-xl border border-gray-800 bg-[#111318] p-6">
-      <h2 className="mb-5 text-lg font-semibold text-white">
-        Easy Buy / Sell
-      </h2>
+      <h2 className="mb-5 text-lg font-semibold text-white">Easy Buy / Sell</h2>
 
       <div className="mb-5 flex flex-wrap gap-2">
         {popularCoins.map((coin) => (
           <button
             key={coin}
             onClick={() => setSelectedCoin(coin)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium ${
               selectedCoin === coin
                 ? "bg-white text-black"
                 : "bg-gray-900 text-gray-300"
             }`}
           >
+            <CoinIcon symbol={coin} size={24} />
             {coin}
           </button>
         ))}
@@ -40,39 +40,19 @@ export default function EasyBuySell() {
       </div>
 
       <div className="mb-5 flex rounded-lg bg-gray-900 p-1">
-        <button
-          onClick={() => setMode("BUY")}
-          className={`flex-1 rounded-md py-2 ${mode === "BUY" ? "bg-green-600 text-white" : "text-gray-400"}`}
-        >
-          BUY
-        </button>
-
-        <button
-          onClick={() => setMode("SELL")}
-          className={`flex-1 rounded-md py-2 ${mode === "SELL" ? "bg-red-600 text-white" : "text-gray-400"}`}
-        >
-          SELL
-        </button>
+        <button onClick={() => setMode("BUY")} className={`flex-1 rounded-md py-2 ${mode === "BUY" ? "bg-green-600 text-white" : "text-gray-400"}`}>BUY</button>
+        <button onClick={() => setMode("SELL")} className={`flex-1 rounded-md py-2 ${mode === "SELL" ? "bg-red-600 text-white" : "text-gray-400"}`}>SELL</button>
       </div>
 
       <div className="space-y-4">
         <div>
           <label className="text-sm text-gray-400">You Pay (INR)</label>
-          <input
-            placeholder="Enter amount"
-            className="mt-2 w-full rounded-lg border border-gray-700 bg-transparent p-3 text-white"
-          />
+          <input placeholder="Enter amount" className="mt-2 w-full rounded-lg border border-gray-700 bg-transparent p-3 text-white" />
         </div>
 
         <div>
-          <label className="text-sm text-gray-400">
-            You Receive ({selectedCoin})
-          </label>
-          <input
-            disabled
-            placeholder="Estimated amount"
-            className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-gray-400"
-          />
+          <label className="text-sm text-gray-400">You Receive ({selectedCoin})</label>
+          <input disabled placeholder="Estimated amount" className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-gray-400" />
         </div>
 
         <button className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white">
@@ -80,11 +60,7 @@ export default function EasyBuySell() {
         </button>
       </div>
 
-      <CoinSelectorModal
-        open={showCoinModal}
-        onClose={() => setShowCoinModal(false)}
-        onSelect={setSelectedCoin}
-      />
+      <CoinSelectorModal open={showCoinModal} onClose={() => setShowCoinModal(false)} onSelect={setSelectedCoin} />
     </section>
   );
 }
