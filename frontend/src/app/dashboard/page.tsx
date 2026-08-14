@@ -89,35 +89,50 @@ export default function DashboardPage() {
 
         <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
           <h2 className="text-xl font-semibold">Quick Actions</h2>
-          <div className="mt-4 flex gap-4 flex-wrap">
-            <Link className="rounded-lg bg-blue-600 px-5 py-3" href="/wallet">Deposit</Link>
-            <Link className="rounded-lg border px-5 py-3" href="/wallet">Withdraw</Link>
-            <Link className="rounded-lg border px-5 py-3" href="/buy-sell">Buy Crypto</Link>
-            <Link className="rounded-lg border px-5 py-3" href="/buy-sell">Sell Crypto</Link>
-          </div>
-        </section>
+          <p className="mt-2 text-sm text-gray-400">Manage each crypto asset directly</p>
 
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-xl font-semibold">Coin Balance</h2>
-          <div className="mt-4 space-y-3">
+          <div className="mt-5 space-y-3">
             {accounts.map((account) => {
               const asset = assetMap.get(account.asset_id);
+              const symbol = asset?.symbol || account.asset_id;
+
               return (
-                <div key={account.id} className="grid grid-cols-4 rounded-xl bg-black/20 p-4">
-                  <span>{asset?.symbol || account.asset_id}</span>
-                  <span>{formatAmount(account.available_balance)}</span>
-                  <span>{formatAmount(account.locked_balance)}</span>
-                  <span>{formatAmount(account.total_balance)}</span>
+                <div key={account.id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-black/20 p-4">
+                  <div>
+                    <p className="font-semibold">{symbol}</p>
+                    <p className="text-sm text-gray-400">Balance: {formatAmount(account.total_balance)}</p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Link className="rounded-lg bg-blue-600 px-5 py-2" href={`/wallet/deposit?asset=${symbol}`}>
+                      Deposit
+                    </Link>
+                    <Link className="rounded-lg border border-white/20 px-5 py-2" href={`/wallet/withdraw?asset=${symbol}`}>
+                      Withdraw
+                    </Link>
+                  </div>
                 </div>
               );
             })}
           </div>
         </section>
 
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
+          <h2 className="text-xl font-semibold">Coin Balance</h2>
+          {accounts.map((account) => (
+            <div key={account.id} className="mt-3 grid grid-cols-4 rounded-xl bg-black/20 p-4">
+              <span>{assetMap.get(account.asset_id)?.symbol || account.asset_id}</span>
+              <span>{formatAmount(account.available_balance)}</span>
+              <span>{formatAmount(account.locked_balance)}</span>
+              <span>{formatAmount(account.total_balance)}</span>
+            </div>
+          ))}
+        </section>
+
         <section className="mt-8 grid gap-6 md:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
             <h2 className="text-xl font-semibold">Open Orders</h2>
-            <p className="mt-4 text-gray-400">Trading orders will appear here after order-book implementation.</p>
+            <p className="mt-4 text-gray-400">Trading orders will appear after order-book implementation.</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
             <h2 className="text-xl font-semibold">Trade History</h2>
