@@ -1,14 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTradeHistory } from "@/hooks/useHistory";
 
 export default function TradeHistory() {
-  const { trades, loading } = useTradeHistory();
+  const { trades, loading, refresh } = useTradeHistory() as any;
+
+  useEffect(() => {
+    const reload = () => refresh?.();
+    window.addEventListener("order-created", reload);
+
+    return () => window.removeEventListener("order-created", reload);
+  }, [refresh]);
 
   const rows = trades?.length ? trades : [
-    { pair: "BTC/INR", side: "BUY", amount: "₹2,50,000", status: "Completed", time: "10:30" },
-    { pair: "ETH/INR", side: "SELL", amount: "₹1,80,000", status: "Completed", time: "11:15" },
-    { pair: "USDT/INR", side: "BUY", amount: "₹50,000", status: "Completed", time: "12:00" },
+    { pair: "BTC/INR", side: "BUY", amount: "₹2,50,000", status: "Completed" },
+    { pair: "ETH/INR", side: "SELL", amount: "₹1,80,000", status: "Completed" },
+    { pair: "USDT/INR", side: "BUY", amount: "₹50,000", status: "Completed" },
   ];
 
   return (
@@ -32,7 +40,7 @@ export default function TradeHistory() {
               </div>
               <div className="text-right">
                 <p className="text-white">{trade.amount || trade.price}</p>
-                <p className="text-xs text-gray-400">{trade.status || trade.time}</p>
+                <p className="text-xs text-gray-400">{trade.status}</p>
               </div>
             </div>
           ))}
