@@ -4,11 +4,14 @@ import { useMemo, useState } from "react";
 import CoinSelectorModal from "./CoinSelectorModal";
 import CoinIcon from "../common/CoinIcon";
 import { useMarket } from "@/hooks/useMarket";
+import { useWallet } from "@/hooks/useWallet";
 
 const defaultCoins = ["USDT", "BTC", "ETH", "SOL"];
 
 export default function EasyBuySell() {
   const { assets = [], ticker = [] } = useMarket();
+  const { wallet } = useWallet();
+
   const coins = assets.length ? assets.slice(0, 6).map((c: any) => c.symbol) : defaultCoins;
 
   const [selectedCoin, setSelectedCoin] = useState("USDT");
@@ -22,13 +25,13 @@ export default function EasyBuySell() {
     );
   }, [ticker, selectedCoin]);
 
-  const price = Number(
-    selectedTicker?.last_price || selectedTicker?.price || selectedTicker?.last || 0
-  );
+  const price = Number(selectedTicker?.last_price || selectedTicker?.price || selectedTicker?.last || 0);
 
   const receiveAmount = price && Number(amount)
     ? (Number(amount) / price).toFixed(8)
     : "0.00000000";
+
+  const availableINR = wallet?.available ?? 0;
 
   return (
     <section className="rounded-2xl border border-gray-800 bg-[#111318] p-6">
@@ -44,9 +47,7 @@ export default function EasyBuySell() {
           <button
             key={coin}
             onClick={() => setSelectedCoin(coin)}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm ${
-              selectedCoin === coin ? "bg-blue-600 text-white" : "bg-[#1b2028] text-gray-300"
-            }`}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm ${selectedCoin === coin ? "bg-blue-600 text-white" : "bg-[#1b2028] text-gray-300"}`}
           >
             <CoinIcon symbol={coin} size={22} />
             {coin}
@@ -74,7 +75,10 @@ export default function EasyBuySell() {
             <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full bg-transparent text-xl text-white outline-none" />
             <span className="font-semibold text-white">INR</span>
           </div>
-          <button className="mt-2 text-xs text-blue-400">MAX</button>
+          <div className="mt-2 flex justify-between text-xs text-gray-400">
+            <span>Available Balance: ₹{availableINR}</span>
+            <button className="text-blue-400">MAX</button>
+          </div>
         </div>
 
         <div className="rounded-xl border border-gray-800 bg-[#0b0e11] p-4">
