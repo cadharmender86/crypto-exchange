@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOrders, OrderResponse } from "@/services/order.service";
+import { cancelOrder, getOrders, OrderResponse } from "@/services/order.service";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   async function loadOrders() {
     try {
@@ -13,6 +14,17 @@ export default function OrdersPage() {
       setOrders(data);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCancel(orderId: string) {
+    setActionId(orderId);
+    try {
+      await cancelOrder(orderId);
+      await loadOrders();
+      window.dispatchEvent(new CustomEvent("order-created"));
+    } finally {
+      setActionId(null);
     }
   }
 
@@ -51,6 +63,15 @@ export default function OrdersPage() {
                   <div className="text-right">
                     <p>{order.amount}</p>
                     <p className="text-sm text-gray-400">{order.status}</p>
+                    {(order.status === "OPEN" || order.status === "PENDING") && (
+                      <button
+                        onClick={() => handleCancel(order.id)}
+                        disabled={actionId === order.id}
+                        className="mt-2 rounded-lg border border-red-500 px-3 py-1 text-sm text-red-400"
+                      >
+                        {actionId === order.id ? "Cancelling..." : "Cancel"}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
