@@ -2,9 +2,11 @@
 
 import Sidebar from "../layout/Sidebar";
 import AdvertisementBanner from "./AdvertisementBanner";
+import DashboardStats from "./DashboardStats";
 import CryptoPortfolio from "./CryptoPortfolio";
 import EasyBuySell from "./EasyBuySell";
 import INRBalanceCard from "./INRBalanceCard";
+import QuickOrders from "./QuickOrders";
 import CoinBalanceTable from "./CoinBalanceTable";
 import OpenOrders from "./OpenOrders";
 import TradeHistory from "./TradeHistory";
@@ -23,7 +25,14 @@ export default function DashboardLayout() {
         <AdvertisementBanner />
 
         <div className="mt-6 space-y-6">
-          <div className="text-2xl font-bold">Dashboard</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Dashboard</h1>
+              <p className="text-sm text-gray-400">Welcome back to BitNova</p>
+            </div>
+          </div>
+
+          <DashboardStats />
 
           <CryptoPortfolio
             currentValue={761000}
@@ -38,19 +47,37 @@ export default function DashboardLayout() {
             locked="₹10,000"
           />
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <div className="xl:col-span-2"><EasyBuySell /></div>
-            <INRBalanceCard />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            <div className="xl:col-span-5">
+              <EasyBuySell />
+            </div>
+
+            <div className="xl:col-span-3">
+              <INRBalanceCard />
+            </div>
+
+            <div className="xl:col-span-4">
+              <QuickOrders />
+            </div>
           </div>
 
-          <CoinBalanceTable />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <div className="xl:col-span-2">
+              <CoinBalanceTable />
+            </div>
+
+            <TradeHistory />
+          </div>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <AccordionSection title="Open Orders"><OpenOrders /></AccordionSection>
-            <AccordionSection title="Trade History"><TradeHistory /></AccordionSection>
-          </div>
+            <AccordionSection title="Open Orders">
+              <OpenOrders />
+            </AccordionSection>
 
-          <AccordionSection title="Transaction History"><TransactionHistory /></AccordionSection>
+            <AccordionSection title="Transaction History">
+              <TransactionHistory />
+            </AccordionSection>
+          </div>
         </div>
       </section>
     </main>
