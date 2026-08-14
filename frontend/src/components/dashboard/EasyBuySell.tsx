@@ -22,6 +22,7 @@ export default function EasyBuySell() {
   const [showCoinModal, setShowCoinModal] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
 
   const selectedTicker: any = useMemo(() => ticker.find((item: any) => item.symbol === `${selectedCoin}INR` || item.symbol === `${selectedCoin}/INR`), [ticker, selectedCoin]);
   const price = Number(selectedTicker?.last_price || selectedTicker?.price || selectedTicker?.last || 0);
@@ -34,15 +35,21 @@ export default function EasyBuySell() {
 
   async function handleConfirmOrder() {
     setSubmitting(true);
+    setMessage("");
     try {
-      await createOrder({
+      const response = await createOrder({
         symbol: `${selectedCoin}/INR`,
         side: mode,
         amount: payAmount,
         quote_currency: "INR",
       });
+
+      window.dispatchEvent(new CustomEvent("order-created", { detail: response }));
       setShowConfirm(false);
       setAmount("");
+      setMessage("Order placed successfully");
+    } catch (error) {
+      setMessage("Order placement failed");
     } finally {
       setSubmitting(false);
     }
@@ -62,6 +69,7 @@ export default function EasyBuySell() {
       <CoinSelectorModal open={showCoinModal} onClose={() => setShowCoinModal(false)} onSelect={setSelectedCoin}/>
       <OrderConfirmationModal open={showConfirm} coin={selectedCoin} mode={mode} payAmount={payAmount} receiveAmount={receiveAmount} fee={fee} onCancel={()=>setShowConfirm(false)} onConfirm={handleConfirmOrder}/>
       {submitting && <p className="mt-2 text-center text-gray-400">Submitting order...</p>}
+      {message && <p className="mt-2 text-center text-green-400">{message}</p>}
     </section>
   );
 }
