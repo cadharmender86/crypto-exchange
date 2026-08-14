@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 
-const coins = ["USDT", "BTC", "ETH", "SOL"];
+const popularCoins = ["USDT", "BTC", "ETH", "SOL"];
+const moreCoins = ["XRP", "ADA", "DOGE", "DOT", "MATIC", "LTC", "AVAX", "BNB"];
 
 export default function EasyBuySell() {
   const [selectedCoin, setSelectedCoin] = useState("USDT");
   const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
+  const [showMoreCoins, setShowMoreCoins] = useState(false);
+
+  const coins = showMoreCoins
+    ? [...popularCoins, ...moreCoins]
+    : popularCoins;
 
   return (
     <section className="rounded-xl border border-gray-800 bg-[#111318] p-6">
@@ -16,7 +22,7 @@ export default function EasyBuySell() {
         </h2>
       </div>
 
-      <div className="mb-5 flex gap-2">
+      <div className="mb-5 flex flex-wrap gap-2">
         {coins.map((coin) => (
           <button
             key={coin}
@@ -30,6 +36,13 @@ export default function EasyBuySell() {
             {coin}
           </button>
         ))}
+
+        <button
+          onClick={() => setShowMoreCoins(!showMoreCoins)}
+          className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-blue-400"
+        >
+          {showMoreCoins ? "Less" : "More Coins"}
+        </button>
       </div>
 
       <div className="mb-5 flex rounded-lg bg-gray-900 p-1">
