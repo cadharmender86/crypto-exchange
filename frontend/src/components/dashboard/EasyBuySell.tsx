@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import CoinSelectorModal from "./CoinSelectorModal";
 import CoinIcon from "../common/CoinIcon";
 import { useMarket } from "@/hooks/useMarket";
@@ -8,13 +8,27 @@ import { useMarket } from "@/hooks/useMarket";
 const defaultCoins = ["USDT", "BTC", "ETH", "SOL"];
 
 export default function EasyBuySell() {
-  const { assets = [] } = useMarket();
+  const { assets = [], ticker = [] } = useMarket();
   const coins = assets.length ? assets.slice(0, 6).map((c: any) => c.symbol) : defaultCoins;
 
   const [selectedCoin, setSelectedCoin] = useState("USDT");
   const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
   const [showCoinModal, setShowCoinModal] = useState(false);
   const [amount, setAmount] = useState("");
+
+  const selectedTicker: any = useMemo(() => {
+    return ticker.find((item: any) =>
+      item.symbol === `${selectedCoin}INR` || item.symbol === `${selectedCoin}/INR`
+    );
+  }, [ticker, selectedCoin]);
+
+  const price = Number(
+    selectedTicker?.last_price || selectedTicker?.price || selectedTicker?.last || 0
+  );
+
+  const receiveAmount = price && Number(amount)
+    ? (Number(amount) / price).toFixed(8)
+    : "0.00000000";
 
   return (
     <section className="rounded-2xl border border-gray-800 bg-[#111318] p-6">
@@ -30,7 +44,9 @@ export default function EasyBuySell() {
           <button
             key={coin}
             onClick={() => setSelectedCoin(coin)}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm ${selectedCoin === coin ? "bg-blue-600 text-white" : "bg-[#1b2028] text-gray-300"}`}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm ${
+              selectedCoin === coin ? "bg-blue-600 text-white" : "bg-[#1b2028] text-gray-300"
+            }`}
           >
             <CoinIcon symbol={coin} size={22} />
             {coin}
@@ -38,8 +54,12 @@ export default function EasyBuySell() {
         ))}
       </div>
 
-      <div className="mb-4 text-sm text-gray-400">
+      <div className="mb-2 text-sm text-gray-400">
         Trading Pair: <span className="font-semibold text-white">{selectedCoin}/INR</span>
+      </div>
+
+      <div className="mb-5 text-sm text-gray-400">
+        Market Price: <span className="text-white">₹ {price || "--"}</span>
       </div>
 
       <div className="mb-5 grid grid-cols-2 rounded-xl bg-[#0b0e11] p-1">
@@ -49,13 +69,10 @@ export default function EasyBuySell() {
 
       <div className="space-y-4">
         <div className="rounded-xl border border-gray-800 bg-[#0b0e11] p-4">
-          <div className="flex justify-between text-sm text-gray-400">
-            <span>You Pay</span>
-            <span>Available INR Balance</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between">
+          <p className="text-sm text-gray-400">You Pay</p>
+          <div className="mt-2 flex justify-between">
             <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full bg-transparent text-xl text-white outline-none" />
-            <span className="font-semibold">INR</span>
+            <span className="font-semibold text-white">INR</span>
           </div>
           <button className="mt-2 text-xs text-blue-400">MAX</button>
         </div>
@@ -63,14 +80,13 @@ export default function EasyBuySell() {
         <div className="rounded-xl border border-gray-800 bg-[#0b0e11] p-4">
           <p className="text-sm text-gray-400">You Receive</p>
           <div className="mt-2 flex justify-between text-xl text-white">
-            <span>0.00</span>
+            <span>{receiveAmount}</span>
             <span>{selectedCoin}</span>
           </div>
-          <p className="mt-2 text-xs text-gray-500">Estimated price will be updated from market data</p>
         </div>
       </div>
 
-      <button className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700">
+      <button className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white">
         Continue {mode} {selectedCoin}
       </button>
 
