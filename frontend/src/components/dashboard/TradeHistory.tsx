@@ -6,50 +6,36 @@ export default function TradeHistory() {
   const { trades, loading } = useTradeHistory();
 
   const rows = trades?.length ? trades : [
-    {
-      pair: "BTC/INR",
-      side: "BUY",
-      price: "₹95,00,000",
-      quantity: "0.01 BTC",
-      fee: "₹100",
-      time: "10:30",
-    },
+    { pair: "BTC/INR", side: "BUY", amount: "₹2,50,000", status: "Completed", time: "10:30" },
+    { pair: "ETH/INR", side: "SELL", amount: "₹1,80,000", status: "Completed", time: "11:15" },
+    { pair: "USDT/INR", side: "BUY", amount: "₹50,000", status: "Completed", time: "12:00" },
   ];
 
   return (
     <section className="rounded-xl border border-gray-800 bg-[#111318] p-6">
-      <h2 className="mb-5 text-lg font-semibold text-white">Trade History</h2>
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Trade History</h2>
+        <button className="text-sm text-blue-400">View All</button>
+      </div>
 
       {loading ? (
         <p className="text-gray-400">Loading trades...</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-gray-300">
-            <thead className="border-b border-gray-800 text-gray-400">
-              <tr>
-                <th className="p-3 text-left">Pair</th>
-                <th className="p-3 text-left">Side</th>
-                <th className="p-3 text-left">Price</th>
-                <th className="p-3 text-left">Quantity</th>
-                <th className="p-3 text-left">Fee</th>
-                <th className="p-3 text-left">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((trade: any, index: number) => (
-                <tr key={index} className="border-b border-gray-900">
-                  <td className="p-3 text-white">{trade.pair}</td>
-                  <td className={`p-3 font-semibold ${trade.side === "BUY" ? "text-green-400" : "text-red-400"}`}>
-                    {trade.side}
-                  </td>
-                  <td className="p-3">{trade.price}</td>
-                  <td className="p-3">{trade.quantity}</td>
-                  <td className="p-3">{trade.fee}</td>
-                  <td className="p-3">{trade.time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          {rows.map((trade: any, index: number) => (
+            <div key={index} className="flex items-center justify-between rounded-lg bg-black/20 p-4">
+              <div>
+                <p className="font-semibold text-white">{trade.pair}</p>
+                <p className={`text-sm font-semibold ${trade.side === "BUY" ? "text-green-400" : "text-red-400"}`}>
+                  {trade.side}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-white">{trade.amount || trade.price}</p>
+                <p className="text-xs text-gray-400">{trade.status || trade.time}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </section>
