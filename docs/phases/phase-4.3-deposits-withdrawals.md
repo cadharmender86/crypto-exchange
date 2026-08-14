@@ -1,7 +1,44 @@
 # Phase 4.3 — Deposits & Withdrawals
 
 ## Status
-**Planned**
+**In Progress**
+
+## Completed
+
+### Deposits
+- Deposit model
+- Deposit migration
+- Deposit service
+- Deposit API
+- Wallet/address ownership validation
+- Asset/network validation
+- Idempotency
+- Ledger settlement
+- Atomic balance updates
+- Authorization / IDOR protection
+- Input validation
+- Rollback and concurrency tests
+- API security tests
+
+## Remaining
+
+### Withdrawals
+- Withdrawal model
+- Withdrawal migration
+- Withdrawal schemas
+- Withdrawal service
+- Withdrawal API
+- Withdrawal address validation
+- Asset/network validation
+- Withdrawal-enabled validation
+- Available → locked balance movement
+- Ledger integration
+- Idempotency
+- Concurrent withdrawal protection
+- Rollback handling
+- Authorization / IDOR protection
+- Input validation
+- Regression tests
 
 ## Objective
 Build customer-facing deposit and withdrawal infrastructure on top of users, assets, accounts, wallets, wallet addresses, balances, and the ledger.
@@ -168,6 +205,13 @@ Any failure rolls back the complete operation.
 - [ ] `git diff --check`
 - [ ] Clean working tree
 - [ ] Commit and push
+
+
+## Out of Scope
+
+Blockchain provider integration, confirmation monitoring,
+reconciliation, and transaction lifecycle management belong to Phase 4.4.
+
 
 ## Implementation Rule
 First establish a correct internal financial state machine and ledger/balance behavior. Add external blockchain-provider integration only when explicitly required by the implementation plan.
