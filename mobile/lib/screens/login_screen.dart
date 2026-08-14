@@ -4,9 +4,10 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({required this.onLoggedIn, super.key});
+  const LoginScreen({required this.onLoggedIn, required this.onRegister, super.key});
 
   final VoidCallback onLoggedIn;
+  final VoidCallback onRegister;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -31,14 +32,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await _authService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      await _authService.login(email: _emailController.text.trim(), password: _passwordController.text);
       if (mounted) widget.onLoggedIn();
     } on ApiException catch (error) {
       if (mounted) _showError(error.message);
-    } catch (error) {
+    } catch (_) {
       if (mounted) _showError('Unable to connect to the server.');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -65,17 +63,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const Icon(Icons.currency_bitcoin, size: 64),
                     const SizedBox(height: 16),
-                    Text(
-                      'BitNova',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
+                    Text('BitNova', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text(
-                      'Sign in to your crypto exchange account',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    Text('Sign in to your crypto exchange account', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
                     const SizedBox(height: 32),
                     TextFormField(
                       controller: _emailController,
@@ -103,11 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: _loading ? null : _login,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: _loading
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Sign In'),
+                        child: _loading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Sign In'),
                       ),
                     ),
+                    TextButton(onPressed: widget.onRegister, child: const Text('Create a new account')),
                   ],
                 ),
               ),
