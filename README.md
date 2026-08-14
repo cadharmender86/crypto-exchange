@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BitNova Crypto Exchange
 
-## Getting Started
+BitNova is a digital-asset exchange project focused on a secure financial backend, wallet infrastructure, balances, ledger operations, and transaction workflows.
 
-First, run the development server:
+## Current Project Status
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Phase | Area | Status |
+|---|---|---|
+| 1 | Foundation & Core API | Completed |
+| 2 | Authentication & User Security | Completed |
+| 3 | Financial Core — Accounts, Ledger & Transfers | Completed |
+| 3B | Financial Integrity & Concurrency | Completed |
+| 4.1 | Wallets | Completed |
+| 4.2 | Wallet Addresses & Authorization Hardening | Completed |
+| 4.3 | Deposits & Withdrawals | **In Progress — Deposits completed; Withdrawals remaining** |
+| 4.4 | Transaction Lifecycle & Blockchain Integration | Planned |
+| 4.5 | Trading / Order Management | Planned |
+| 4.6 | Production Operations & Observability | Planned |
+| 4.7 | API Abuse / Production Security | Baseline tests completed; follow-up hardening planned |
+
+## Phase 4.3 — Deposits & Withdrawals
+
+### Deposits — Completed
+
+- Deposit model and migration
+- Deposit service and API
+- Asset and network validation
+- Wallet/address ownership validation
+- Atomic balance and ledger settlement
+- Idempotency and duplicate transaction protection
+- Authorization / IDOR protection
+- Input validation
+- Rollback, concurrency, and API security tests
+
+### Withdrawals — Remaining
+
+- Withdrawal model and migration
+- Withdrawal schemas, service, and API
+- Destination address/network validation
+- Withdrawal-enabled asset validation
+- Available-to-locked balance movement
+- Ledger integration
+- Idempotency and concurrent withdrawal protection
+- Rollback and authorization tests
+- Full regression coverage
+
+Detailed Phase 4.3 documentation: [`docs/phases/phase-4.3-deposits-withdrawals.md`](docs/phases/phase-4.3-deposits-withdrawals.md)
+
+Project roadmap: [`docs/roadmap.md`](docs/roadmap.md)
+
+## Repository Structure
+
+```text
+.
+├── backend/        # FastAPI backend, services, models, migrations, and tests
+├── docs/           # Roadmap and phase documentation
+└── ...             # Frontend and project configuration
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Backend Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The backend uses FastAPI, SQLAlchemy, PostgreSQL, Alembic, and asynchronous database operations.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+From the backend directory:
 
-## Learn More
+```powershell
+# activate the virtual environment
+.venv\Scripts\Activate.ps1
 
-To learn more about Next.js, take a look at the following resources:
+# run the API
+uvicorn app.main:app --reload
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Engineering Principles
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Financial state changes must be atomic.
+2. Authorization is derived server-side from the authenticated user.
+3. Database constraints remain the final integrity boundary.
+4. Race conditions are tested, not assumed away.
+5. API errors must not expose stack traces or raw database details.
+6. Development-only endpoints must never become customer-facing financial APIs.
+7. Each phase ends with implementation, tests, security review, migration review, clean Git diff, commit, and push.
 
-## Deploy on Vercel
+## Documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`docs/roadmap.md`](docs/roadmap.md) — project roadmap and milestone status
+- [`docs/phases/README.md`](docs/phases/README.md) — phase documentation index
+- [`docs/phases/phase-4.3-deposits-withdrawals.md`](docs/phases/phase-4.3-deposits-withdrawals.md) — current Phase 4.3 implementation plan and status
