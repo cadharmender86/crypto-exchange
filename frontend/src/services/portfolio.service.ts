@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/apiClient";
+import { apiFetch } from "@/lib/api";
 
 export interface PortfolioHistoryPoint {
   date: string;
@@ -8,7 +8,7 @@ export interface PortfolioHistoryPoint {
 export async function getPortfolioHistory(
   range: string = "30D"
 ): Promise<PortfolioHistoryPoint[]> {
-  return apiClient<PortfolioHistoryPoint[]>(
+  return apiFetch<PortfolioHistoryPoint[]>(
     `/portfolio/history?range=${range}`
   );
 }
