@@ -3,18 +3,22 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cancelOrder, getOrder, OrderResponse } from "@/services/order.service";
+import { cancelOrder, getOrder, getOrderFills, OrderFill, OrderResponse } from "@/services/order.service";
 
 export default function OrderDetailsPage() {
   const params = useParams();
   const id = params.id as string;
 
   const [order, setOrder] = useState<OrderResponse | null>(null);
+  const [fills, setFills] = useState<OrderFill[]>([]);
   const [loadingCancel, setLoadingCancel] = useState(false);
 
   async function loadOrder() {
     const data = await getOrder(id);
     setOrder(data);
+
+    const executions = await getOrderFills(id);
+    setFills(executions);
   }
 
   async function handleCancel() {
@@ -71,6 +75,23 @@ export default function OrderDetailsPage() {
         </div>
 
         <section className="mt-8 rounded-xl bg-black/20 p-5">
+          <h2 className="font-semibold">Trade Fills</h2>
+          {fills.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-400">No executions yet</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {fills.map((fill) => (
+                <div key={fill.id} className="grid grid-cols-3 rounded-lg bg-black/30 p-3 text-sm">
+                  <span>{fill.price}</span>
+                  <span>{fill.quantity}</span>
+                  <span>{fill.created_at || "-"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8 rounded-xl bg-black/20 p-5">
           <h2 className="font-semibold">Execution Timeline</h2>
           <div className="mt-4 space-y-3 text-sm text-gray-300">
             <p>✓ Order Created</p>
@@ -82,11 +103,7 @@ export default function OrderDetailsPage() {
         </section>
 
         {canCancel && (
-          <button
-            onClick={handleCancel}
-            disabled={loadingCancel}
-            className="mt-6 rounded-lg border border-red-500 px-5 py-2 text-red-400"
-          >
+          <button onClick={handleCancel} disabled={loadingCancel} className="mt-6 rounded-lg border border-red-500 px-5 py-2 text-red-400">
             {loadingCancel ? "Cancelling..." : "Cancel Order"}
           </button>
         )}
