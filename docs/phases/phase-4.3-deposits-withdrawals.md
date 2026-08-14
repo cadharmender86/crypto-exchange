@@ -1,24 +1,64 @@
 # Phase 4.3 — Deposits & Withdrawals
 
 ## Status
-**Planned**
+**In Progress**
+
+## Completed
+
+### Deposits
+- Deposit model
+- Deposit migration
+- Deposit service
+- Deposit API
+- Wallet/address ownership validation
+- Asset/network validation
+- Idempotency
+- Ledger settlement
+- Atomic balance updates
+- Authorization / IDOR protection
+- Input validation
+- Rollback and concurrency tests
+- API security tests
+
+## Remaining
+
+### Withdrawals
+- Withdrawal model
+- Withdrawal migration
+- Withdrawal schemas
+- Withdrawal service
+- Withdrawal API
+- Withdrawal address validation
+- Asset/network validation
+- Withdrawal-enabled validation
+- Available → locked balance movement
+- Ledger integration
+- Idempotency
+- Concurrent withdrawal protection
+- Rollback handling
+- Authorization / IDOR protection
+- Input validation
+- Regression tests
 
 ## Objective
 Build customer-facing deposit and withdrawal infrastructure on top of users, assets, accounts, wallets, wallet addresses, balances, and the ledger.
 
 ## 1. Deposits
 
-### Proposed API
+### Implemented API
 ```http
 POST /api/v1/deposits
+GET  /api/v1/deposits
+GET  /api/v1/deposits/{deposit_id}
 ```
 
-### Proposed request
+### Implemented request
 ```json
 {
+  "wallet_address_id": "...",
   "asset_id": "...",
   "network": "ETHEREUM",
-  "address": "0x...",
+  "blockchain_tx_hash": "...",
   "amount": "100.00"
 }
 ```
@@ -27,13 +67,26 @@ POST /api/v1/deposits
 - Authentication required.
 - Asset must exist and be active.
 - `deposit_enabled` must be true.
-- Network must be valid.
-- Address must match the selected network.
+- Network must be validated against the wallet address and asset.
+- Wallet address must belong to the authenticated user.
 - Amount must be greater than zero.
 - Decimal precision must be enforced.
 - Financial state changes must be atomic.
-- Deposit must be represented in the ledger.
+- Deposit settlement must be represented in the ledger.
+- Duplicate blockchain transactions must be handled idempotently.
 - Failures must roll back completely.
+
+### Deposit validation completed
+- Valid deposit creation
+- Duplicate blockchain transaction idempotency
+- Deposit confirmation progression
+- Prevention of credit before confirmation
+- Exactly-once confirmed settlement/credit
+- Insufficient treasury protection
+- API authentication and authorization
+- Cross-user deposit access protection
+- Wallet/address ownership protection
+- Invalid amount rejection
 
 ## 2. Withdrawals
 
@@ -119,9 +172,10 @@ commit
 Any failure rolls back the complete operation.
 
 ## 8. Testing Plan
+
 ### Functional
-- [ ] Create deposit
-- [ ] Reject invalid deposit
+- [x] Create deposit
+- [x] Reject invalid deposit
 - [ ] Create withdrawal
 - [ ] Reject invalid withdrawal
 - [ ] List withdrawals
@@ -140,34 +194,46 @@ Any failure rolls back the complete operation.
 - [ ] Total balance invariant
 
 ### Integrity
-- [ ] Duplicate transaction
-- [ ] Duplicate idempotency key
+- [x] Duplicate deposit transaction
+- [ ] Duplicate idempotency key for withdrawals
 - [ ] Database constraint race
-- [ ] Rollback after ledger failure
-- [ ] Rollback after balance failure
+- [x] Rollback after ledger failure for deposits
+- [x] Rollback after balance failure for deposits
 
 ### Concurrency
 - [ ] Two simultaneous withdrawals
 - [ ] Competing withdrawals near the balance limit
-- [ ] Concurrent idempotent requests
+- [ ] Concurrent idempotent withdrawal requests
 
 ## 9. Definition of Done
-- [ ] Deposit schemas/service/API
+- [x] Deposit schemas/service/API
 - [ ] Withdrawal schemas/service/API
-- [ ] Migration if required
-- [ ] Ledger integration
-- [ ] Atomic balance updates
-- [ ] Asset capability validation
-- [ ] Network/address validation
-- [ ] Authorization / IDOR protection
-- [ ] IntegrityError → controlled `409` where applicable
-- [ ] Idempotency
+- [x] Migration for deposits
+- [ ] Migration for withdrawals if required
+- [x] Ledger integration for deposits
+- [ ] Ledger integration for withdrawals
+- [x] Atomic balance updates for deposits
+- [ ] Atomic balance updates for withdrawals
+- [x] Asset capability validation for deposits
+- [ ] Asset capability validation for withdrawals
+- [x] Network/address validation for deposits
+- [ ] Network/address validation for withdrawals
+- [x] Authorization / IDOR protection for deposits
+- [ ] Authorization / IDOR protection for withdrawals
+- [x] IntegrityError → controlled `409` where applicable
+- [x] Deposit idempotency
+- [ ] Withdrawal idempotency
 - [ ] Concurrent withdrawal protection
-- [ ] Rollback tests
-- [ ] Full Phase 4 regression tests
+- [x] Deposit rollback tests
+- [ ] Withdrawal rollback tests
+- [ ] Full Phase 4 regression tests after withdrawals
 - [ ] `git diff --check`
 - [ ] Clean working tree
 - [ ] Commit and push
+
+## Out of Scope
+
+Blockchain provider integration, confirmation monitoring, reconciliation, and transaction lifecycle management belong to Phase 4.4.
 
 ## Implementation Rule
 First establish a correct internal financial state machine and ledger/balance behavior. Add external blockchain-provider integration only when explicitly required by the implementation plan.
