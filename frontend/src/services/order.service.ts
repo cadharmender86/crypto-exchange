@@ -29,3 +29,9 @@ export function createOrder(payload: CreateOrderRequest) {
 export function getOrders() {
   return apiClient<OrderResponse[]>("/orders");
 }
+
+export function cancelOrder(orderId: string) {
+  return apiClient<OrderResponse>(`/orders/${orderId}/cancel`, {
+    method: "POST",
+  });
+}
