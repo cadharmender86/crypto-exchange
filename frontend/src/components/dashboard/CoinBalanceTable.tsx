@@ -1,5 +1,7 @@
 "use client";
 
+import CoinIcon from "@/components/common/CoinIcon";
+
 type CoinBalance = {
   symbol: string;
   balance: string;
@@ -50,7 +52,17 @@ export default function CoinBalanceTable() {
           <tbody>
             {coins.map((coin) => (
               <tr key={coin.symbol} className="border-b border-gray-800 text-white">
-                <td className="p-3 font-semibold">{coin.symbol}</td>
+                <td className="p-3">
+                  <div className="flex items-center gap-3">
+                    <CoinIcon symbol={coin.symbol} size={34} />
+                    <div>
+                      <div className="font-semibold">{coin.symbol}</div>
+                      <div className="text-xs text-gray-400">
+                        {coin.balance}
+                      </div>
+                    </div>
+                  </div>
+                </td>
                 <td className="p-3">
                   ₹ {coin.netCost.toLocaleString("en-IN")}
                 </td>
