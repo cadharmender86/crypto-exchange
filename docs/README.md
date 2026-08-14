@@ -41,7 +41,7 @@ See the [Phase Documentation Index](phases/README.md).
 | 3B | Financial Integrity & Concurrency | Completed |
 | 4.1 | Wallets | Completed |
 | 4.2 | Wallet Addresses | Completed |
-| 4.3 | Deposits & Withdrawals | Planned |
+| 4.3 | Deposits & Withdrawals | In Progress |
 | 4.4 | Blockchain Transaction Lifecycle | Planned |
 | 4.5 | Trading / Order Management | Planned |
 | 4.6 | Production Operations | Planned |
