@@ -4,29 +4,47 @@ import { useEffect, useState } from 'react';
 import { getTradeHistory, getTransactionHistory } from '@/services/history.service';
 
 export function useTradeHistory() {
-  const [trades, setTrades] = useState([]);
+  const [trades, setTrades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  async function refresh() {
+    setLoading(true);
+    try {
+      const data = await getTradeHistory();
+      setTrades(data);
+    } catch {
+      setTrades([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    getTradeHistory()
-      .then(setTrades)
-      .catch(() => setTrades([]))
-      .finally(() => setLoading(false));
+    refresh();
   }, []);
 
-  return { trades, loading };
+  return { trades, loading, refresh };
 }
 
 export function useTransactionHistory() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  async function refresh() {
+    setLoading(true);
+    try {
+      const data = await getTransactionHistory();
+      setTransactions(data);
+    } catch {
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    getTransactionHistory()
-      .then(setTransactions)
-      .catch(() => setTransactions([]))
-      .finally(() => setLoading(false));
+    refresh();
   }, []);
 
-  return { transactions, loading };
+  return { transactions, loading, refresh };
 }
