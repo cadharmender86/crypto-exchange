@@ -13,6 +13,11 @@ export type OrderResponse = {
   side: string;
   status: string;
   amount: string;
+  filled_amount?: string;
+  remaining_amount?: string;
+  average_price?: string;
+  fee?: string;
+  created_at?: string;
 };
 
 export function getOpenOrders() {
@@ -28,6 +33,10 @@ export function createOrder(payload: CreateOrderRequest) {
 
 export function getOrders() {
   return apiClient<OrderResponse[]>("/orders");
+}
+
+export function getOrder(orderId: string) {
+  return apiClient<OrderResponse>(`/orders/${orderId}`);
 }
 
 export function cancelOrder(orderId: string) {
