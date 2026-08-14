@@ -3,22 +3,36 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getOrders, OrderResponse } from "@/services/order.service";
+import { cancelOrder, getOrders, OrderResponse } from "@/services/order.service";
 
 export default function OrderDetailsPage() {
   const params = useParams();
   const id = params.id as string;
 
   const [order, setOrder] = useState<OrderResponse | null>(null);
+  const [loadingCancel, setLoadingCancel] = useState(false);
+
+  async function loadOrder() {
+    const orders = await getOrders();
+    const found = orders.find((item) => item.id === id);
+    setOrder(found || null);
+  }
+
+  async function handleCancel() {
+    if (!order) return;
+
+    setLoadingCancel(true);
+    try {
+      await cancelOrder(order.id);
+      await loadOrder();
+      window.dispatchEvent(new CustomEvent("order-created"));
+    } finally {
+      setLoadingCancel(false);
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      const orders = await getOrders();
-      const found = orders.find((item) => item.id === id);
-      setOrder(found || null);
-    }
-
-    load();
+    loadOrder();
   }, [id]);
 
   if (!order) {
@@ -28,6 +42,8 @@ export default function OrderDetailsPage() {
       </main>
     );
   }
+
+  const canCancel = order.status === "OPEN" || order.status === "PENDING";
 
   return (
     <main className="min-h-screen bg-[#070b14] p-6 text-white">
@@ -44,6 +60,25 @@ export default function OrderDetailsPage() {
           <div><span className="text-gray-400">Amount:</span> {order.amount}</div>
           <div><span className="text-gray-400">Status:</span> {order.status}</div>
         </div>
+
+        <section className="mt-8 rounded-xl bg-black/20 p-5">
+          <h2 className="font-semibold">Execution Timeline</h2>
+          <div className="mt-4 space-y-3 text-sm text-gray-300">
+            <p>✓ Order Created</p>
+            <p>{order.status === "OPEN" ? "⏳ Waiting for execution" : "✓ Order processed"}</p>
+            <p>{order.status === "FILLED" ? "✓ Trade Completed" : ""}</p>
+          </div>
+        </section>
+
+        {canCancel && (
+          <button
+            onClick={handleCancel}
+            disabled={loadingCancel}
+            className="mt-6 rounded-lg border border-red-500 px-5 py-2 text-red-400"
+          >
+            {loadingCancel ? "Cancelling..." : "Cancel Order"}
+          </button>
+        )}
       </div>
     </main>
   );
