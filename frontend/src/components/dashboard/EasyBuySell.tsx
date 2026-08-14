@@ -7,6 +7,7 @@ import { useMarket } from "@/hooks/useMarket";
 import { useWallet } from "@/hooks/useWallet";
 
 const defaultCoins = ["USDT", "BTC", "ETH", "SOL"];
+const TRADING_FEE_PERCENT = 0.1;
 
 export default function EasyBuySell() {
   const { assets = [], ticker = [] } = useMarket();
@@ -18,6 +19,7 @@ export default function EasyBuySell() {
   const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
   const [showCoinModal, setShowCoinModal] = useState(false);
   const [amount, setAmount] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
 
   const selectedTicker: any = useMemo(() => {
     return ticker.find((item: any) =>
@@ -26,12 +28,12 @@ export default function EasyBuySell() {
   }, [ticker, selectedCoin]);
 
   const price = Number(selectedTicker?.last_price || selectedTicker?.price || selectedTicker?.last || 0);
-
-  const receiveAmount = price && Number(amount)
-    ? (Number(amount) / price).toFixed(8)
-    : "0.00000000";
-
+  const payAmount = Number(amount || 0);
+  const receiveAmount = price && payAmount ? (payAmount / price).toFixed(8) : "0.00000000";
   const availableINR = wallet?.available ?? 0;
+  const fee = payAmount * TRADING_FEE_PERCENT / 100;
+  const totalPayable = payAmount + fee;
+  const insufficientBalance = mode === "BUY" && totalPayable > availableINR;
 
   return (
     <section className="rounded-2xl border border-gray-800 bg-[#111318] p-6">
@@ -44,11 +46,7 @@ export default function EasyBuySell() {
 
       <div className="mb-5 flex flex-wrap gap-3">
         {coins.map((coin) => (
-          <button
-            key={coin}
-            onClick={() => setSelectedCoin(coin)}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm ${selectedCoin === coin ? "bg-blue-600 text-white" : "bg-[#1b2028] text-gray-300"}`}
-          >
+          <button key={coin} onClick={() => setSelectedCoin(coin)} className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm ${selectedCoin === coin ? "bg-blue-600 text-white" : "bg-[#1b2028] text-gray-300"}`}>
             <CoinIcon symbol={coin} size={22} />
             {coin}
           </button>
@@ -58,7 +56,6 @@ export default function EasyBuySell() {
       <div className="mb-2 text-sm text-gray-400">
         Trading Pair: <span className="font-semibold text-white">{selectedCoin}/INR</span>
       </div>
-
       <div className="mb-5 text-sm text-gray-400">
         Market Price: <span className="text-white">₹ {price || "--"}</span>
       </div>
@@ -75,10 +72,7 @@ export default function EasyBuySell() {
             <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full bg-transparent text-xl text-white outline-none" />
             <span className="font-semibold text-white">INR</span>
           </div>
-          <div className="mt-2 flex justify-between text-xs text-gray-400">
-            <span>Available Balance: ₹{availableINR}</span>
-            <button className="text-blue-400">MAX</button>
-          </div>
+          <div className="mt-2 text-xs text-gray-400">Available Balance: ₹{availableINR}</div>
         </div>
 
         <div className="rounded-xl border border-gray-800 bg-[#0b0e11] p-4">
@@ -90,8 +84,16 @@ export default function EasyBuySell() {
         </div>
       </div>
 
-      <button className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white">
-        Continue {mode} {selectedCoin}
+      {showPreview && (
+        <div className="mt-4 rounded-xl border border-gray-800 bg-[#0b0e11] p-4 text-sm text-gray-300">
+          <div className="flex justify-between"><span>Trading Fee</span><span>₹{fee.toFixed(2)}</span></div>
+          <div className="mt-2 flex justify-between font-semibold text-white"><span>Total Pay</span><span>₹{totalPayable.toFixed(2)}</span></div>
+          {insufficientBalance && <p className="mt-3 text-red-400">Insufficient INR Balance</p>}
+        </div>
+      )}
+
+      <button onClick={() => setShowPreview(true)} disabled={!amount || insufficientBalance} className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50">
+        Review {mode} {selectedCoin}
       </button>
 
       <CoinSelectorModal open={showCoinModal} onClose={() => setShowCoinModal(false)} onSelect={setSelectedCoin} />
