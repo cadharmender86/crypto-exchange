@@ -1,24 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMarketTicker } from "@/services/market.service";
+import { getMarketAssets, getMarketTicker } from "@/services/market.service";
 
 export function useMarket() {
-  const [ticker, setTicker] = useState([]);
+  const [ticker, setTicker] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadTicker() {
+    async function loadMarket() {
       try {
-        const data = await getMarketTicker();
-        setTicker(data);
+        const [tickerData, assetData] = await Promise.all([
+          getMarketTicker(),
+          getMarketAssets(),
+        ]);
+
+        setTicker(tickerData || []);
+        setAssets(assetData || []);
       } finally {
         setLoading(false);
       }
     }
 
-    loadTicker();
+    loadMarket();
   }, []);
 
-  return { ticker, loading };
+  return { ticker, assets, loading };
 }
