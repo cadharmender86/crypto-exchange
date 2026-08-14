@@ -11,8 +11,8 @@ import TradeHistory from "./TradeHistory";
 
 export default function DashboardLayout() {
   return (
-    <main className="min-h-screen bg-[#0b0e11] p-6 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen w-full bg-[#0b0e11] text-white">
+      <div className="w-full space-y-6 p-4 md:p-6">
 
         <DashboardHeader />
 
@@ -23,25 +23,32 @@ export default function DashboardLayout() {
           tradingVolume={2500000}
         />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <EasyBuySell />
-          <INRBalanceCard />
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <EasyBuySell />
+          </div>
+
+          <div>
+            <INRBalanceCard />
+          </div>
         </div>
 
         <CoinBalanceTable />
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <AccordionSection title="Open Orders">
+            <OpenOrders />
+          </AccordionSection>
+
+          <AccordionSection title="Trade History">
+            <TradeHistory />
+          </AccordionSection>
+        </div>
 
         <AccordionSection title="INR Deposit / Withdraw Details">
           <p className="text-gray-400">
             INR transaction history will appear here.
           </p>
-        </AccordionSection>
-
-        <AccordionSection title="Open Orders">
-          <OpenOrders />
-        </AccordionSection>
-
-        <AccordionSection title="Trade History">
-          <TradeHistory />
         </AccordionSection>
 
         <AccordionSection title="Crypto Deposit / Withdraw Details">
