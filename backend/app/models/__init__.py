@@ -9,6 +9,7 @@ from app.models.session import UserSession
 from app.models.wallet import Wallet
 from app.models.wallet_address import WalletAddress
 from app.models.deposit import Deposit
+from app.models.withdrawal import Withdrawal
 
 __all__ = [
     "Base",
@@ -22,4 +23,5 @@ __all__ = [
     "Wallet",
     "WalletAddress",
     "Deposit",
+    "Withdrawal",
 ]
