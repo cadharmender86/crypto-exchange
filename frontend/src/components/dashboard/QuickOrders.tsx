@@ -1,29 +1,36 @@
 "use client";
 
 const orders = [
-  ["₿ Buy BTC / INR", "₹2,50,000", "Open"],
-  ["◆ Sell ETH / INR", "₹1,80,000", "Open"],
-  ["● Buy COPY / INR", "₹75,500", "Filled"],
-  ["₮ Buy USDT / INR", "₹50,000", "Filled"],
+  { pair: "BTC/INR", side: "BUY", amount: "₹2,50,000", status: "Open" },
+  { pair: "ETH/INR", side: "SELL", amount: "₹1,80,000", status: "Open" },
+  { pair: "USDT/INR", side: "BUY", amount: "₹50,000", status: "Filled" },
 ];
 
 export default function QuickOrders() {
   return (
-    <section className="rounded-xl border border-white/10 bg-[#111827] p-5">
-      <div className="mb-4 flex justify-between">
+    <section className="rounded-2xl border border-white/10 bg-[#111318] p-5 text-white">
+      <div className="mb-5 flex items-center justify-between">
         <h2 className="font-semibold">Quick Orders</h2>
         <button className="text-sm text-blue-400">View All</button>
       </div>
+
       <div className="space-y-4">
-        {orders.map(([name, amount, status]) => (
-          <div key={name} className="flex items-center justify-between text-sm">
-            <div>
-              <p className="font-medium">{name}</p>
-              <p className="text-xs text-gray-500">Exchange order</p>
-            </div>
-            <div className="text-right">
-              <p>{amount}</p>
-              <p className={status === "Filled" ? "text-green-400" : "text-blue-400"}>{status}</p>
+        {orders.map((order) => (
+          <div key={order.pair} className="rounded-xl bg-black/20 p-3">
+            <div className="flex justify-between">
+              <div>
+                <p className="font-medium">{order.pair}</p>
+                <span className={order.side === "BUY" ? "text-green-400 text-xs" : "text-red-400 text-xs"}>
+                  {order.side}
+                </span>
+              </div>
+
+              <div className="text-right">
+                <p className="text-sm">{order.amount}</p>
+                <span className={order.status === "Filled" ? "text-green-400 text-xs" : "text-blue-400 text-xs"}>
+                  {order.status}
+                </span>
+              </div>
             </div>
           </div>
         ))}
