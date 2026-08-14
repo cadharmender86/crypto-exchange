@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CoinIcon from "../common/CoinIcon";
 
 type Props = {
   open: boolean;
@@ -52,9 +53,12 @@ export default function CoinSelectorModal({ open, onClose, onSelect }: Props) {
                 onSelect(coin.symbol);
                 onClose();
               }}
-              className="flex w-full justify-between rounded-lg bg-gray-900 p-3 text-left text-white hover:bg-gray-800"
+              className="flex w-full items-center justify-between rounded-lg bg-gray-900 p-3 text-white hover:bg-gray-800"
             >
-              <span>{coin.name}</span>
+              <span className="flex items-center gap-3">
+                <CoinIcon symbol={coin.symbol} size={36} />
+                {coin.name}
+              </span>
               <span>{coin.symbol}</span>
             </button>
           ))}
