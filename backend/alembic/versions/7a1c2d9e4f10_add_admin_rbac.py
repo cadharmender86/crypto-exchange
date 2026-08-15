@@ -7,6 +7,7 @@ Create Date: 2026-08-15
 """
 
 from typing import Sequence, Union
+from uuid import uuid4
 
 from alembic import op
 import sqlalchemy as sa
@@ -140,39 +141,42 @@ def upgrade() -> None:
     op.create_index("ix_audit_logs_resource_type", "audit_logs", ["resource_type"], unique=False)
     op.create_index("ix_audit_logs_resource_id", "audit_logs", ["resource_id"], unique=False)
 
+    permission_ids = {}
     for name, description in PERMISSIONS:
+        permission_id = uuid4()
+        permission_ids[name] = permission_id
         op.execute(
             sa.text(
-                "INSERT INTO admin_permissions (id, name, description) "
-                "VALUES (gen_random_uuid(), :name, :description)"
-            ).bindparams(name=name, description=description)
+                "INSERT INTO admin_permissions (id, name, description) VALUES (:id, :name, :description)"
+            ).bindparams(id=permission_id, name=name, description=description)
         )
 
+    role_ids = {}
     for name, description in ROLES:
+        role_id = uuid4()
+        role_ids[name] = role_id
         op.execute(
             sa.text(
-                "INSERT INTO admin_roles (id, name, description) "
-                "VALUES (gen_random_uuid(), :name, :description)"
-            ).bindparams(name=name, description=description)
+                "INSERT INTO admin_roles (id, name, description) VALUES (:id, :name, :description)"
+            ).bindparams(id=role_id, name=name, description=description)
         )
 
-    # SUPER_ADMIN intentionally receives all permissions.
-    op.execute(
-        sa.text(
-            "INSERT INTO admin_role_permissions (role_id, permission_id) "
-            "SELECT r.id, p.id FROM admin_roles r CROSS JOIN admin_permissions p "
-            "WHERE r.name = 'SUPER_ADMIN'"
+    for permission_name, permission_id in permission_ids.items():
+        op.execute(
+            sa.text(
+                "INSERT INTO admin_role_permissions (role_id, permission_id) VALUES (:role_id, :permission_id)"
+            ).bindparams(role_id=role_ids["SUPER_ADMIN"], permission_id=permission_id)
         )
-    )
 
     for role_name, permission_names in ROLE_PERMISSIONS.items():
         for permission_name in permission_names:
             op.execute(
                 sa.text(
-                    "INSERT INTO admin_role_permissions (role_id, permission_id) "
-                    "SELECT r.id, p.id FROM admin_roles r, admin_permissions p "
-                    "WHERE r.name = :role_name AND p.name = :permission_name"
-                ).bindparams(role_name=role_name, permission_name=permission_name)
+                    "INSERT INTO admin_role_permissions (role_id, permission_id) VALUES (:role_id, :permission_id)"
+                ).bindparams(
+                    role_id=role_ids[role_name],
+                    permission_id=permission_ids[permission_name],
+                )
             )
 
 
