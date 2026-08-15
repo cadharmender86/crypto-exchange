@@ -16,6 +16,7 @@ export default function RbacManagement() {
   const [saving, setSaving] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [form, setForm] = useState({ email: "", full_name: "", password: "", role_id: "", reason: "" });
@@ -100,6 +101,7 @@ export default function RbacManagement() {
       setAdmins((items) => [data, ...items]);
       setSelected((items) => ({ ...items, [data.id]: data.roles[0] || "" }));
       setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" });
+      setShowPassword(false);
       setShowCreateForm(false);
       setNotice(`Administrator ${data.email} created successfully.`);
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to create administrator"); }
@@ -116,14 +118,14 @@ export default function RbacManagement() {
 
     {showCreateForm && (
       <section className="rounded-2xl border border-cyan-500/20 bg-[#0d1422] p-5">
-        <div className="mb-4 flex items-center justify-between"><div><h3 className="font-semibold">Create Administrator</h3><p className="mt-1 text-xs text-slate-500">Only SUPER_ADMIN can create administrators. You may create another SUPER_ADMIN or a restricted staff administrator.</p></div><button type="button" onClick={() => { setShowCreateForm(false); setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" }); }} className="text-xs text-slate-500 hover:text-white">Cancel</button></div>
+        <div className="mb-4 flex items-center justify-between"><div><h3 className="font-semibold">Create Administrator</h3><p className="mt-1 text-xs text-slate-500">Only SUPER_ADMIN can create administrators. You may create another SUPER_ADMIN or a restricted staff administrator.</p></div><button type="button" onClick={() => { setShowCreateForm(false); setShowPassword(false); setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" }); }} className="text-xs text-slate-500 hover:text-white">Cancel</button></div>
         <form onSubmit={createAdmin} className="grid gap-4 md:grid-cols-2">
           <label className="text-xs text-slate-400">Full name <span className="text-red-400">*</span><input required aria-required="true" minLength={2} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
           <label className="text-xs text-slate-400">Email <span className="text-red-400">*</span><input required aria-required="true" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
-          <label className="text-xs text-slate-400">Initial password <span className="text-red-400">*</span><input required aria-required="true" minLength={12} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
+          <label className="text-xs text-slate-400">Initial password <span className="text-red-400">*</span><div className="relative mt-1"><input required aria-required="true" minLength={12} type={showPassword ? "text" : "password"} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 pr-16 text-sm text-white outline-none focus:border-cyan-500" /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs font-semibold text-slate-400 hover:text-white">{showPassword ? "Hide" : "Show"}</button></div></label>
           <label className="text-xs text-slate-400">Role <span className="text-red-400">*</span><select required aria-required="true" value={form.role_id} onChange={(e) => setForm({ ...form, role_id: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-500"><option value="">Select role</option>{roles.filter((r) => r.is_active).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></label>
           <label className="text-xs text-slate-400 md:col-span-2">Reason <span className="text-red-400">*</span><input required aria-required="true" minLength={3} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Why is this administrator being created?" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
-          <div className="md:col-span-2 flex justify-end"><button disabled={creating} className="rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">{creating ? "Creating..." : "Create Administrator"}</button></div>
+          <div className="md:col-span-2 flex justify-end"><button type="submit" disabled={creating} className="rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">{creating ? "Submitting..." : "Submit"}</button></div>
         </form>
       </section>
     )}
