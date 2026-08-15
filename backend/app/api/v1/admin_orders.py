@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -69,9 +69,7 @@ async def list_orders(
         filters.append(Order.side == side.upper())
 
     count_result = await db.execute(
-        select(func.count(Order.id))
-        .join(User, User.id == Order.user_id)
-        .where(*filters)
+        select(func.count(Order.id)).join(User, User.id == Order.user_id).where(*filters)
     )
     total = count_result.scalar_one()
 
