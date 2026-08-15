@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -15,7 +14,7 @@ from app.schemas.admin_withdrawal import (
     AdminWithdrawalResponse,
     WithdrawalReviewRequest,
 )
-from app.services.balance_service import BalanceService
+from app.services.withdrawal_service import WithdrawalService
 
 
 router = APIRouter(prefix="/admin/withdrawals", tags=["Admin Withdrawals"])
@@ -124,18 +123,26 @@ async def _review(
         raise HTTPException(status_code=404, detail="Withdrawal not found")
 
     withdrawal, email = row
-    if withdrawal.status != "PENDING":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Withdrawal is already {withdrawal.status.lower()}",
-        )
-
     old_status = withdrawal.status
-    if target_status == "REJECTED":
-        account = await BalanceService.get_locked_account(db, withdrawal.account_id)
-        await BalanceService.unlock(account, withdrawal.amount)
 
-    withdrawal.status = target_status
+    try:
+        if target_status == WithdrawalService.APPROVED:
+            await WithdrawalService.approve_withdrawal(
+                db, withdrawal_id=withdrawal_id
+            )
+        elif target_status == WithdrawalService.REJECTED:
+            await WithdrawalService.reject_withdrawal(
+                db, withdrawal_id=withdrawal_id
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported review action")
+    except ValueError as exc:
+        await db.rollback()
+        detail = str(exc)
+        if detail == "Withdrawal not found":
+            raise HTTPException(status_code=404, detail=detail) from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
+
     db.add(
         AuditLog(
             admin_user_id=admin.id,
@@ -163,7 +170,9 @@ async def approve_withdrawal(
     admin: AdminUser = Depends(require_permission("WITHDRAWAL_APPROVE")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await _review(withdrawal_id, request, payload, admin, db, "APPROVED")
+    return await _review(
+        withdrawal_id, request, payload, admin, db, WithdrawalService.APPROVED
+    )
 
 
 @router.post("/{withdrawal_id}/reject", response_model=AdminWithdrawalResponse)
@@ -174,4 +183,6 @@ async def reject_withdrawal(
     admin: AdminUser = Depends(require_permission("WITHDRAWAL_REJECT")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await _review(withdrawal_id, request, payload, admin, db, "REJECTED")
+    return await _review(
+        withdrawal_id, request, payload, admin, db, WithdrawalService.REJECTED
+    )
