@@ -1,2 +1,5 @@
-import AdminTablePage from "@/components/admin/AdminTablePage";
-export default function Page() { return <AdminTablePage section="settings" />; }
+import RbacManagement from "@/components/admin/RbacManagement";
+
+export default function Page() {
+  return <RbacManagement />;
+}
