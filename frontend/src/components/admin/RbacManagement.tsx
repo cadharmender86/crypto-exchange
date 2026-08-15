@@ -20,6 +20,9 @@ export default function RbacManagement() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [form, setForm] = useState({ email: "", full_name: "", password: "", role_id: "", reason: "" });
+  const [roleConfirmation, setRoleConfirmation] = useState<{ admin: Admin; currentRole: string; newRole: string; newRoleId: string } | null>(null);
+  const [roleConfirmationStep, setRoleConfirmationStep] = useState<1 | 2>(1);
+  const [roleReason, setRoleReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -45,22 +48,40 @@ export default function RbacManagement() {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function saveRole(admin: Admin) {
-    const roleName = selected[admin.id];
-    const role = roles.find((item) => item.name === roleName);
-    if (!role) return;
-    const reason = window.prompt(`Reason for assigning ${role.name}:`);
-    if (!reason || reason.trim().length < 3) return;
+  function cancelRoleConfirmation() {
+    setRoleConfirmation(null);
+    setRoleConfirmationStep(1);
+    setRoleReason("");
+  }
+
+  function openRoleConfirmation(admin: Admin) {
+    const newRoleName = selected[admin.id];
+    const newRole = roles.find((item) => item.name === newRoleName);
+    if (!newRole) return;
+    const currentRole = admin.roles[0] || "UNASSIGNED";
+    if (currentRole === newRole.name) return;
+    setError("");
+    setNotice("");
+    setRoleReason("");
+    setRoleConfirmation({ admin, currentRole, newRole: newRole.name, newRoleId: newRole.id });
+    setRoleConfirmationStep(1);
+  }
+
+  async function confirmRoleChange() {
+    if (!roleConfirmation || roleReason.trim().length < 3) return;
+    const { admin, newRole, newRoleId } = roleConfirmation;
     setSaving(admin.id); setError(""); setNotice("");
     try {
       const response = await adminFetch(`/api/v1/admin/rbac/admins/${admin.id}/roles`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role_ids: [role.id], reason: reason.trim() }),
+        body: JSON.stringify({ role_ids: [newRoleId], reason: roleReason.trim() }),
       });
       const data = (await response.json()) as { roles: string[]; detail?: string };
       if (!response.ok) throw new Error(data.detail || "Unable to update role");
       setAdmins((items) => items.map((item) => item.id === admin.id ? { ...item, roles: data.roles } : item));
-      setNotice(`Role updated for ${admin.email}.`);
+      setSelected((items) => ({ ...items, [admin.id]: data.roles[0] || newRole }));
+      setNotice(`Role changed for ${admin.email}: ${roleConfirmation.currentRole} → ${newRole}.`);
+      cancelRoleConfirmation();
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to update role"); }
     finally { setSaving(null); }
   }
@@ -118,6 +139,42 @@ export default function RbacManagement() {
     {error && <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-300">{error}</div>}
     {notice && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-emerald-300">{notice}</div>}
 
+    {roleConfirmation && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0d1422] p-6 shadow-2xl">
+          {roleConfirmationStep === 1 ? (
+            <>
+              <h3 className="text-lg font-bold text-white">Confirm role change</h3>
+              <p className="mt-2 text-sm text-slate-400">Review the proposed administrator role change before continuing.</p>
+              <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+                <div className="text-xs uppercase tracking-wider text-slate-500">Administrator</div>
+                <div className="mt-1 font-semibold text-white">{roleConfirmation.admin.full_name}</div>
+                <div className="text-xs text-slate-500">{roleConfirmation.admin.email}</div>
+                <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                  <div><div className="text-xs text-slate-500">Current role</div><div className="mt-1 font-semibold text-slate-300">{roleConfirmation.currentRole}</div></div>
+                  <div className="text-lg text-cyan-400">→</div>
+                  <div><div className="text-xs text-slate-500">New role</div><div className="mt-1 font-bold text-cyan-300">{roleConfirmation.newRole}</div></div>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-3"><button type="button" onClick={cancelRoleConfirmation} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300">Cancel</button><button type="button" onClick={() => setRoleConfirmationStep(2)} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950">Continue</button></div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-lg font-bold text-white">Final confirmation</h3>
+              <p className="mt-2 text-sm text-slate-400">This action will immediately change the administrator's role and access permissions.</p>
+              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+                <div className="font-semibold text-amber-300">{roleConfirmation.admin.email}</div>
+                <div className="mt-2 text-slate-400">Current: <span className="font-semibold text-slate-200">{roleConfirmation.currentRole}</span></div>
+                <div className="mt-1 text-slate-400">New role: <span className="font-bold text-cyan-300">{roleConfirmation.newRole}</span></div>
+              </div>
+              <label className="mt-4 block text-xs text-slate-400">Reason <span className="text-red-400">*</span><input autoFocus value={roleReason} onChange={(e) => setRoleReason(e.target.value)} placeholder="Why is this role change required?" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
+              <div className="mt-5 flex justify-end gap-3"><button type="button" onClick={() => setRoleConfirmationStep(1)} disabled={saving !== null} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300">Back</button><button type="button" onClick={cancelRoleConfirmation} disabled={saving !== null} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300">Cancel</button><button type="button" onClick={() => void confirmRoleChange()} disabled={roleReason.trim().length < 3 || saving !== null} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">{saving ? "Changing..." : "Confirm Role Change"}</button></div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+
     {showCreateForm && (
       <section className="rounded-2xl border border-cyan-500/20 bg-[#0d1422] p-5">
         <div className="mb-4 flex items-center justify-between"><div><h3 className="font-semibold">Create Administrator</h3><p className="mt-1 text-xs text-slate-500">Only SUPER_ADMIN can create administrators. You may create another SUPER_ADMIN or a restricted staff administrator.</p></div><button type="button" onClick={() => { setShowCreateForm(false); setShowPassword(false); setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" }); }} className="text-xs text-slate-500 hover:text-white">Cancel</button></div>
@@ -135,7 +192,7 @@ export default function RbacManagement() {
     <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
       <section className="rounded-2xl border border-slate-800 bg-[#0d1422] p-5">
         <div className="flex items-center justify-between"><div><h3 className="font-semibold">Administrator accounts</h3><p className="mt-1 text-xs text-slate-500">Role changes are audited and require SUPER_ADMIN.</p></div><button onClick={() => void load()} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300">Refresh</button></div>
-        <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500"><tr><th className="pb-3">Administrator</th><th className="pb-3">Status</th><th className="pb-3">Role</th><th className="pb-3 text-right">Action</th></tr></thead><tbody>{loading ? <tr><td colSpan={4} className="py-12 text-center text-slate-500">Loading RBAC...</td></tr> : admins.map((admin) => <tr key={admin.id} className="border-b border-slate-800/70 last:border-0"><td className="py-4"><div className="font-semibold text-slate-200">{admin.full_name}</div><div className="mt-1 text-xs text-slate-500">{admin.email}</div></td><td className="py-4"><span className={admin.is_active && !admin.is_locked ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300" : "rounded-full bg-red-500/10 px-2.5 py-1 text-xs text-red-300"}>{admin.is_locked ? "Locked" : admin.is_active ? "Active" : "Inactive"}</span></td><td className="py-4"><select value={selected[admin.id] || ""} onChange={(e) => setSelected((v) => ({ ...v, [admin.id]: e.target.value }))} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-300"><option value="">Select role</option>{roles.filter((r) => r.is_active).map((role) => <option key={role.id} value={role.name}>{role.name}</option>)}</select></td><td className="py-4 text-right"><button disabled={!selected[admin.id] || saving === admin.id} onClick={() => void saveRole(admin)} className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-40">{saving === admin.id ? "Saving..." : "Save"}</button></td></tr>)}</tbody></table></div>
+        <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500"><tr><th className="pb-3">Administrator</th><th className="pb-3">Status</th><th className="pb-3">Role</th><th className="pb-3 text-right">Action</th></tr></thead><tbody>{loading ? <tr><td colSpan={4} className="py-12 text-center text-slate-500">Loading RBAC...</td></tr> : admins.map((admin) => <tr key={admin.id} className="border-b border-slate-800/70 last:border-0"><td className="py-4"><div className="font-semibold text-slate-200">{admin.full_name}</div><div className="mt-1 text-xs text-slate-500">{admin.email}</div></td><td className="py-4"><span className={admin.is_active && !admin.is_locked ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300" : "rounded-full bg-red-500/10 px-2.5 py-1 text-xs text-red-300"}>{admin.is_locked ? "Locked" : admin.is_active ? "Active" : "Inactive"}</span></td><td className="py-4"><select value={selected[admin.id] || ""} onChange={(e) => setSelected((v) => ({ ...v, [admin.id]: e.target.value }))} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-300"><option value="">Select role</option>{roles.filter((r) => r.is_active).map((role) => <option key={role.id} value={role.name}>{role.name}</option>)}</select></td><td className="py-4 text-right"><button disabled={!selected[admin.id] || selected[admin.id] === (admin.roles[0] || "") || saving === admin.id} onClick={() => openRoleConfirmation(admin)} className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">{saving === admin.id ? "Changing..." : "Change Role"}</button></td></tr>)}</tbody></table></div>
       </section>
       <section className="rounded-2xl border border-slate-800 bg-[#0d1422] p-5"><h3 className="font-semibold">Role matrix</h3><p className="mt-1 text-xs text-slate-500">{permissions.length} permissions across {roles.length} seeded roles.</p><div className="mt-5 space-y-3">{roles.map((role) => <details key={role.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"><summary className="cursor-pointer list-none"><div className="flex items-center justify-between"><span className="font-medium text-slate-200">{role.name}</span><span className="text-xs text-slate-500">{role.user_count} users · {role.permissions.length} permissions</span></div><div className="mt-1 text-xs text-slate-500">{role.description}</div></summary><div className="mt-4 flex flex-wrap gap-2">{role.permissions.map((permission) => <span key={permission.id} title={permission.description || ""} className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] text-slate-400">{permission.name}</span>)}</div></details>)}</div></section>
     </div>
