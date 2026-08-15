@@ -16,8 +16,8 @@ const nav = [
   { href: "/admin/orders", label: "Trading", icon: "⌁", permission: "ORDER_READ" },
   { href: "/admin/ledger", label: "Ledger", icon: "▤", permission: "LEDGER_READ" },
   { href: "/admin/audit", label: "Audit Logs", icon: "◷", permission: "AUDIT_READ" },
-  { href: "/admin/rbac", label: "RBAC", icon: "♙", permission: "ADMIN_MANAGE" },
-  { href: "/admin/settings", label: "Settings", icon: "⚙", permission: "ADMIN_MANAGE" },
+  { href: "/admin/rbac", label: "RBAC", icon: "♙", permission: "ADMIN_MANAGE", superAdminOnly: true },
+  { href: "/admin/settings", label: "Settings", icon: "⚙", permission: "ADMIN_MANAGE", superAdminOnly: true },
 ];
 
 export default function AdminShell({ children }: { children: ReactNode }) {
@@ -54,8 +54,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const visibleNav = nav.filter((item) => session.permissions.includes(item.permission));
+  const isSuperAdmin = session.roles.includes("SUPER_ADMIN");
+  const visibleNav = nav.filter((item) =>
+    session.permissions.includes(item.permission) && (!item.superAdminOnly || isSuperAdmin)
+  );
   const initials = (session.full_name || session.email || "A").charAt(0).toUpperCase();
+  const adminLabel = isSuperAdmin ? "Super Admin" : "Administrator";
 
   return (
     <div className="min-h-screen bg-[#070c16] text-slate-100 lg:flex">
@@ -91,7 +95,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-700 text-sm font-semibold">{initials}</div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-white">{session.full_name || session.email}</div>
-              <div className="text-xs text-emerald-400">Super Admin</div>
+              <div className="text-xs text-emerald-400">{adminLabel}</div>
             </div>
             <button onClick={logout} aria-label="Logout" className="text-slate-500 hover:text-white">⌄</button>
           </div>
@@ -104,12 +108,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <button className="grid h-9 w-9 place-items-center rounded-lg border border-slate-800 bg-[#0c1422] text-slate-300 hover:text-white lg:hidden">☰</button>
             <div className="relative hidden sm:block">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">⌕</span>
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search anything..."
-                className="h-9 w-72 rounded-lg border border-slate-800 bg-[#0c1422] pl-9 pr-16 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-indigo-500/60"
-              />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search anything..." className="h-9 w-72 rounded-lg border border-slate-800 bg-[#0c1422] pl-9 pr-16 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-indigo-500/60" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-600">Ctrl + K</span>
             </div>
           </div>
@@ -120,7 +119,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <div className="grid h-9 w-9 place-items-center rounded-full bg-indigo-500/80 text-sm font-semibold">{initials}</div>
             <div className="hidden sm:block">
               <div className="text-xs font-semibold text-white">{session.full_name || "Admin"}</div>
-              <div className="text-[10px] text-slate-500">Super Admin</div>
+              <div className="text-[10px] text-slate-500">{adminLabel}</div>
             </div>
             <button onClick={logout} className="hidden text-slate-500 hover:text-white sm:block">⌄</button>
           </div>
@@ -133,11 +132,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 ? pathname === "/admin"
                 : pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
-                <Link
-                  key={`mobile-${item.label}`}
-                  href={item.href}
-                  className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs ${active ? "border-indigo-500/60 bg-indigo-600/90 text-white" : "border-slate-700 text-slate-300"}`}
-                >
+                <Link key={`mobile-${item.label}`} href={item.href} className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs ${active ? "border-indigo-500/60 bg-indigo-600/90 text-white" : "border-slate-700 text-slate-300"}`}>
                   {item.label}
                 </Link>
               );
