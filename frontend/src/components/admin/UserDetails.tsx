@@ -25,22 +25,109 @@ type AuditLog = {
   created_at: string;
 };
 
+type Deposit = {
+  id: string;
+  user_id: string;
+  user_email: string;
+  wallet_address_id: string;
+  asset_id: string;
+  network: string;
+  blockchain_tx_hash: string;
+  amount: string;
+  confirmations: number;
+  status: string;
+  ledger_transaction_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type Withdrawal = {
+  id: string;
+  user_id: string;
+  user_email: string;
+  account_id: string;
+  asset_id: string;
+  network: string;
+  destination_address: string;
+  amount: string;
+  status: string;
+  idempotency_key: string;
+  ledger_transaction_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ListResponse<T> = { items: T[]; page: number; page_size: number; total: number };
+
 function formatDate(value: string | null) {
   if (!value) return "Never";
   return new Date(value).toLocaleString();
+}
+
+function shortId(value: string) {
+  return value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value;
 }
 
 function Status({ active, children }: { active: boolean; children: React.ReactNode }) {
   return <span className={active ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300" : "rounded-full bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"}>{children}</span>;
 }
 
+function TransactionStatus({ value }: { value: string }) {
+  const normalized = value.toUpperCase();
+  const positive = ["COMPLETED", "CONFIRMED", "SUCCESS", "APPROVED"].includes(normalized);
+  const warning = ["PENDING", "PROCESSING", "UNDER_REVIEW"].includes(normalized);
+  return <span className={positive ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300" : warning ? "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300" : "rounded-full bg-slate-700/40 px-2.5 py-1 text-xs font-medium text-slate-300"}>{value}</span>;
+}
+
 export default function UserDetails({ userId }: { userId: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [transactionTotals, setTransactionTotals] = useState({ deposits: 0, withdrawals: 0 });
   const [loading, setLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [transactionError, setTransactionError] = useState("");
+
+  const loadTransactions = useCallback(async (email: string) => {
+    setTransactionsLoading(true);
+    setTransactionError("");
+    try {
+      const encodedEmail = encodeURIComponent(email);
+      const [depositResponse, withdrawalResponse] = await Promise.all([
+        adminFetch(`/api/v1/admin/deposits?page=1&page_size=10&search=${encodedEmail}`),
+        adminFetch(`/api/v1/admin/withdrawals?page=1&page_size=10&search=${encodedEmail}`),
+      ]);
+
+      const failures: string[] = [];
+      if (depositResponse.ok) {
+        const data = (await depositResponse.json()) as ListResponse<Deposit>;
+        setDeposits(data.items);
+        setTransactionTotals((current) => ({ ...current, deposits: data.total }));
+      } else {
+        failures.push("deposits");
+      }
+
+      if (withdrawalResponse.ok) {
+        const data = (await withdrawalResponse.json()) as ListResponse<Withdrawal>;
+        setWithdrawals(data.items);
+        setTransactionTotals((current) => ({ ...current, withdrawals: data.total }));
+      } else {
+        failures.push("withdrawals");
+      }
+
+      if (failures.length) {
+        setTransactionError(`Unable to load ${failures.join(" and ")}. Your admin role may not have the required read permission.`);
+      }
+    } catch (err) {
+      setTransactionError(err instanceof Error ? err.message : "Unable to load user transactions");
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,6 +137,8 @@ export default function UserDetails({ userId }: { userId: string }) {
       const data = (await response.json()) as User & { detail?: string };
       if (!response.ok) throw new Error(data.detail || "Unable to load user");
       setUser(data);
+
+      void loadTransactions(data.email);
 
       try {
         const auditResponse = await adminFetch(`/api/v1/admin/audit-logs?limit=100`);
@@ -65,7 +154,7 @@ export default function UserDetails({ userId }: { userId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [loadTransactions, userId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -105,7 +194,7 @@ export default function UserDetails({ userId }: { userId: string }) {
         <div>
           <Link href="/admin/users" className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400 hover:text-cyan-300">← User management</Link>
           <h2 className="mt-3 text-2xl font-bold tracking-tight text-white">User details</h2>
-          <p className="mt-2 text-sm text-slate-500">Review the customer account and perform authorized account controls.</p>
+          <p className="mt-2 text-sm text-slate-500">Review the customer account, transaction activity and authorized account controls.</p>
         </div>
         <div className="flex items-center gap-3">
           <Status active={user.is_active}>{user.is_active ? "Active" : "Suspended"}</Status>
@@ -135,11 +224,30 @@ export default function UserDetails({ userId }: { userId: string }) {
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
-          <h3 className="text-base font-semibold text-white">Operational modules</h3>
-          <p className="mt-2 text-xs leading-5 text-slate-500">These areas will be populated as their admin APIs are connected.</p>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-            {['Wallets', 'Deposits', 'Withdrawals', 'Orders', 'Ledger'].map((item) => <div key={item} className="rounded-xl border border-slate-800 bg-slate-950/30 px-4 py-3 text-sm text-slate-400"><span className="mr-2 text-slate-600">•</span>{item}</div>)}
+          <div className="flex items-start justify-between gap-3">
+            <div><h3 className="text-base font-semibold text-white">Transaction summary</h3><p className="mt-1 text-xs text-slate-500">Activity linked to this user's email.</p></div>
+            <button onClick={() => void loadTransactions(user.email)} disabled={transactionsLoading} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-500 disabled:opacity-50">Refresh</button>
           </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><div className="text-xs text-slate-500">Deposits</div><div className="mt-2 text-xl font-semibold text-white">{transactionTotals.deposits}</div></div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><div className="text-xs text-slate-500">Withdrawals</div><div className="mt-2 text-xl font-semibold text-white">{transactionTotals.withdrawals}</div></div>
+          </div>
+        </div>
+      </section>
+
+      {transactionError && <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-300">{transactionError}</div>}
+
+      <section className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
+        <div className="flex items-center justify-between gap-3"><div><h3 className="text-base font-semibold text-white">Recent deposits</h3><p className="mt-1 text-xs text-slate-500">Latest 10 deposits associated with this customer.</p></div><span className="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-500">{transactionsLoading ? "Loading…" : transactionTotals.deposits}</span></div>
+        <div className="mt-5 overflow-x-auto">
+          {deposits.length === 0 && !transactionsLoading ? <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-sm text-slate-600">No deposits found for this user.</div> : <table className="w-full min-w-[850px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500"><tr><th className="pb-3 pr-4">Date</th><th className="pb-3 pr-4">Network</th><th className="pb-3 pr-4">Amount</th><th className="pb-3 pr-4">Confirmations</th><th className="pb-3 pr-4">Status</th><th className="pb-3">Transaction</th></tr></thead><tbody>{deposits.map((deposit) => <tr key={deposit.id} className="border-b border-slate-800/70 last:border-0"><td className="py-3 pr-4 whitespace-nowrap text-slate-400">{formatDate(deposit.created_at)}</td><td className="py-3 pr-4 text-slate-300">{deposit.network}</td><td className="py-3 pr-4 font-medium text-slate-200">{deposit.amount}</td><td className="py-3 pr-4 text-slate-400">{deposit.confirmations}</td><td className="py-3 pr-4"><TransactionStatus value={deposit.status} /></td><td className="py-3 font-mono text-xs text-slate-500" title={deposit.blockchain_tx_hash}>{shortId(deposit.blockchain_tx_hash)}</td></tr>)}</tbody></table>}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
+        <div className="flex items-center justify-between gap-3"><div><h3 className="text-base font-semibold text-white">Recent withdrawals</h3><p className="mt-1 text-xs text-slate-500">Latest 10 withdrawals associated with this customer.</p></div><span className="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-500">{transactionsLoading ? "Loading…" : transactionTotals.withdrawals}</span></div>
+        <div className="mt-5 overflow-x-auto">
+          {withdrawals.length === 0 && !transactionsLoading ? <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-sm text-slate-600">No withdrawals found for this user.</div> : <table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500"><tr><th className="pb-3 pr-4">Date</th><th className="pb-3 pr-4">Network</th><th className="pb-3 pr-4">Amount</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Destination</th><th className="pb-3">ID</th></tr></thead><tbody>{withdrawals.map((withdrawal) => <tr key={withdrawal.id} className="border-b border-slate-800/70 last:border-0"><td className="py-3 pr-4 whitespace-nowrap text-slate-400">{formatDate(withdrawal.created_at)}</td><td className="py-3 pr-4 text-slate-300">{withdrawal.network}</td><td className="py-3 pr-4 font-medium text-slate-200">{withdrawal.amount}</td><td className="py-3 pr-4"><TransactionStatus value={withdrawal.status} /></td><td className="max-w-xs py-3 pr-4 font-mono text-xs text-slate-500" title={withdrawal.destination_address}>{shortId(withdrawal.destination_address)}</td><td className="py-3 font-mono text-xs text-slate-500">{shortId(withdrawal.id)}</td></tr>)}</tbody></table>}
         </div>
       </section>
 
