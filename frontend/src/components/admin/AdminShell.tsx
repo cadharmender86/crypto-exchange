@@ -16,7 +16,7 @@ const nav = [
   { href: "/admin/orders", label: "Trading", icon: "⌁", permission: "ORDER_READ" },
   { href: "/admin/ledger", label: "Ledger", icon: "▤", permission: "LEDGER_READ" },
   { href: "/admin/audit", label: "Audit Logs", icon: "◷", permission: "AUDIT_READ" },
-  { href: "/admin/settings", label: "RBAC", icon: "♙", permission: "ADMIN_MANAGE" },
+  { href: "/admin/rbac", label: "RBAC", icon: "♙", permission: "ADMIN_MANAGE" },
   { href: "/admin/settings", label: "Settings", icon: "⚙", permission: "ADMIN_MANAGE" },
 ];
 
@@ -55,9 +55,6 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }
 
   const visibleNav = nav.filter((item) => session.permissions.includes(item.permission));
-  const activeItem = visibleNav.find((item) =>
-    item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href),
-  );
   const initials = (session.full_name || session.email || "A").charAt(0).toUpperCase();
 
   return (
@@ -73,7 +70,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 space-y-1 px-3 py-5">
           {visibleNav.map((item) => {
-            const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+            const active = item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={`${item.label}-${item.href}`}
@@ -129,9 +128,20 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
         <div className="border-b border-slate-800/80 bg-[#09101c] px-3 py-2 lg:hidden">
           <div className="flex gap-2 overflow-x-auto">
-            {visibleNav.map((item) => (
-              <Link key={`mobile-${item.label}`} href={item.href} className="whitespace-nowrap rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300">{item.label}</Link>
-            ))}
+            {visibleNav.map((item) => {
+              const active = item.href === "/admin"
+                ? pathname === "/admin"
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={`mobile-${item.label}`}
+                  href={item.href}
+                  className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs ${active ? "border-indigo-500/60 bg-indigo-600/90 text-white" : "border-slate-700 text-slate-300"}`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
 
