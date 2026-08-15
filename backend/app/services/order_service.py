@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -51,8 +52,7 @@ class OrderService:
                 raise ValueError("Client order ID already exists")
 
         assets = await db.execute(
-            select(Asset)
-            .where(Asset.id.in_([base_asset_id, quote_asset_id]))
+            select(Asset).where(Asset.id.in_([base_asset_id, quote_asset_id]))
         )
         asset_map = {asset.id: asset for asset in assets.scalars().all()}
         base_asset = asset_map.get(base_asset_id)
@@ -142,7 +142,7 @@ class OrderService:
 
         await BalanceService.unlock(account, unlock_amount)
         order.status = "CANCELLED"
-        order.cancelled_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        order.cancelled_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(order)
         return order
