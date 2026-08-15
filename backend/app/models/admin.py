@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Table, Column
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -35,6 +35,12 @@ class AdminUser(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     failed_login_attempts: Mapped[int] = mapped_column(default=0, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    roles: Mapped[list["AdminRole"]] = relationship(
+        secondary=admin_user_roles,
+        back_populates="users",
+        lazy="selectin",
+    )
+
 
 class AdminRole(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "admin_roles"
@@ -43,12 +49,29 @@ class AdminRole(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    users: Mapped[list[AdminUser]] = relationship(
+        secondary=admin_user_roles,
+        back_populates="roles",
+        lazy="selectin",
+    )
+    permissions: Mapped[list["AdminPermission"]] = relationship(
+        secondary=admin_role_permissions,
+        back_populates="roles",
+        lazy="selectin",
+    )
+
 
 class AdminPermission(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "admin_permissions"
 
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    roles: Mapped[list[AdminRole]] = relationship(
+        secondary=admin_role_permissions,
+        back_populates="permissions",
+        lazy="selectin",
+    )
 
 
 class AuditLog(UUIDPrimaryKeyMixin, Base):
