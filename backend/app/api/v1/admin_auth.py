@@ -205,4 +205,5 @@ async def admin_me(
         "email": admin.email,
         "full_name": admin.full_name,
         "permissions": sorted(permissions),
+        "roles": sorted(role.name for role in admin.roles),
     }
