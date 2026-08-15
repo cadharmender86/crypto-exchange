@@ -44,4 +44,4 @@ class KYCRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
     )
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
