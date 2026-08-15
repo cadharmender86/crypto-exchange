@@ -11,7 +11,7 @@ export default async function Page({ params }: PageProps) {
     <div className="space-y-6">
       <UserDetails userId={userId} />
       <div className="mx-auto w-full max-w-7xl">
-        <UserKycPanel userId={userId} email="" />
+        <UserKycPanel userId={userId} />
       </div>
     </div>
   );
