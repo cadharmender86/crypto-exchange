@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+).replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
 
 const ACCESS_TOKEN_KEY = "bitnova_admin_access_token";
 const REFRESH_TOKEN_KEY = "bitnova_admin_refresh_token";
