@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { adminFetch } from "@/lib/adminApi";
 
 type Dashboard = {
@@ -39,10 +40,6 @@ function number(value: number | null | undefined) {
   return value == null ? "—" : value.toLocaleString();
 }
 
-function money(value: number | null | undefined) {
-  return value == null ? "—" : `₹${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-}
-
 function time(value: string) {
   return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
@@ -65,12 +62,12 @@ function KpiCard({ label, value, trend, note, icon, tone, spark: points }: KpiPr
         </svg>
       </div>
       <div className="h-px bg-slate-800" />
-      <div className="flex items-center justify-between px-4 py-2 text-[11px] text-slate-500"><span>{label === "Ledger Balance" ? "Total Assets" : "Count"}</span><span className="font-semibold text-slate-200">{label === "Ledger Balance" ? "—" : "—"}</span></div>
+      <div className="flex items-center justify-between px-4 py-2 text-[11px] text-slate-500"><span>{label === "Ledger Balance" ? "Total Assets" : "Count"}</span><span className="font-semibold text-slate-200">—</span></div>
     </div>
   );
 }
 
-function Section({ title, subtitle, children, className = "" }: { title: string; subtitle?: string; children: React.ReactNode; className?: string }) {
+function Section({ title, subtitle, children, className = "" }: { title: string; subtitle?: string; children: ReactNode; className?: string }) {
   return (
     <section className={`rounded-xl border border-slate-800 bg-[#0d1523] ${className}`}>
       <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-3.5 sm:px-5">
@@ -192,12 +189,8 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        <Section title="Recent Deposits">
-          <EmptyActivity title="Deposit activity" href="/admin/deposits" description="Recent deposit data will be connected to the admin deposits API." />
-        </Section>
-        <Section title="Recent Withdrawals">
-          <EmptyActivity title="Withdrawal activity" href="/admin/withdrawals" description="Recent withdrawal data will be connected to the admin withdrawals API." />
-        </Section>
+        <Section title="Recent Deposits"><EmptyActivity title="Deposit activity" href="/admin/deposits" description="Recent deposit data will be connected to the admin deposits API." /></Section>
+        <Section title="Recent Withdrawals"><EmptyActivity title="Withdrawal activity" href="/admin/withdrawals" description="Recent withdrawal data will be connected to the admin withdrawals API." /></Section>
       </div>
 
       <Section title="Recent Admin Activity" subtitle="Audit events from the backend">
