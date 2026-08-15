@@ -13,6 +13,23 @@ type Dashboard = {
 
 type KycResponse = { items: Array<{ id: string; status: string }>; total: number };
 
+type TransactionRow = {
+  id: string;
+  user_email: string;
+  network: string;
+  amount: string;
+  status: string;
+  created_at: string;
+  blockchain_tx_hash?: string;
+  confirmations?: number;
+  destination_address?: string;
+};
+
+type TransactionList = {
+  items: TransactionRow[];
+  total: number;
+};
+
 type KpiProps = {
   label: string;
   value: string;
@@ -27,6 +44,16 @@ const chart = [42, 48, 39, 53, 45, 50, 61, 58, 68, 64, 74, 71, 82, 77, 69, 86, 7
 
 function number(value: number | null | undefined) {
   return value == null ? "—" : value.toLocaleString();
+}
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function statusClass(status: string) {
+  if (["APPROVED", "CONFIRMED", "COMPLETED"].includes(status)) return "bg-emerald-500/10 text-emerald-300";
+  if (["REJECTED", "FAILED"].includes(status)) return "bg-rose-500/10 text-rose-300";
+  return "bg-amber-500/10 text-amber-300";
 }
 
 function Section({ title, subtitle, children, className = "" }: { title: string; subtitle?: string; children: ReactNode; className?: string }) {
@@ -125,29 +152,80 @@ function SystemHealth() {
   );
 }
 
-function EmptyActivity({ title, href, description }: { title: string; href: string; description: string }) {
-  return <div className="px-5 py-8 text-center"><p className="text-xs font-medium text-slate-400">{title}</p><p className="mt-1 text-[10px] text-slate-600">{description}</p><Link href={href} className="mt-3 inline-block text-[10px] font-semibold text-indigo-400 hover:text-indigo-300">View All →</Link></div>;
+function ActivityTable({ title, href, rows, loading, type }: { title: string; href: string; rows: TransactionRow[]; loading: boolean; type: "deposits" | "withdrawals" }) {
+  return (
+    <Section title={title}>
+      <div className="flex items-center justify-end border-b border-slate-800/70 px-4 py-2.5 sm:px-5">
+        <Link href={href} className="text-[10px] font-semibold text-indigo-400 hover:text-indigo-300">View All →</Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left text-[10px]">
+          <thead className="border-b border-slate-800 text-[9px] uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="px-4 py-2.5 sm:px-5">ID</th>
+              <th className="py-2.5">User</th>
+              <th className="py-2.5">Asset</th>
+              <th className="py-2.5">Amount</th>
+              <th className="py-2.5">Status</th>
+              <th className="py-2.5 pr-4">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">Loading...</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">No recent {type} found.</td></tr>
+            ) : (
+              rows.slice(0, 5).map((row) => (
+                <tr key={row.id} className="border-b border-slate-800/70 last:border-0">
+                  <td className="px-4 py-3 font-medium text-slate-300 sm:px-5">{row.id.slice(0, 12)}</td>
+                  <td className="max-w-[170px] truncate py-3 pr-3 text-slate-400">{row.user_email}</td>
+                  <td className="py-3 pr-3 text-slate-300"><span className="mr-1.5 inline-block h-4 w-4 rounded-full bg-emerald-500/15 text-center text-[8px] leading-4 text-emerald-300">{row.network.slice(0, 1).toUpperCase()}</span>{row.network}</td>
+                  <td className="py-3 pr-3 font-medium text-slate-200">{row.amount}</td>
+                  <td className="py-3 pr-3"><span className={`rounded-md px-2 py-1 ${statusClass(row.status)}`}>{row.status.replaceAll("_", " ")}</span></td>
+                  <td className="py-3 pr-4 whitespace-nowrap text-slate-500">{formatTime(row.created_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Section>
+  );
 }
 
 export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [kycTotal, setKycTotal] = useState<number | null>(null);
+  const [deposits, setDeposits] = useState<TransactionRow[]>([]);
+  const [withdrawals, setWithdrawals] = useState<TransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
       try {
-        const [dashboardResponse, kycResponse] = await Promise.all([
+        const [dashboardResponse, kycResponse, depositsResponse, withdrawalsResponse] = await Promise.all([
           adminFetch("/api/v1/admin/dashboard"),
           adminFetch("/api/v1/admin/kyc?page=1&page_size=1"),
+          adminFetch("/api/v1/admin/deposits?page=1&page_size=5"),
+          adminFetch("/api/v1/admin/withdrawals?page=1&page_size=5"),
         ]);
+
         const dashboardData = (await dashboardResponse.json()) as Dashboard & { detail?: string };
         const kycData = (await kycResponse.json()) as KycResponse & { detail?: string };
+        const depositsData = (await depositsResponse.json()) as TransactionList & { detail?: string };
+        const withdrawalsData = (await withdrawalsResponse.json()) as TransactionList & { detail?: string };
+
         if (!dashboardResponse.ok) throw new Error(dashboardData.detail || "Unable to load dashboard");
         if (!kycResponse.ok) throw new Error(kycData.detail || "Unable to load KYC queue");
+        if (!depositsResponse.ok) throw new Error(depositsData.detail || "Unable to load deposits");
+        if (!withdrawalsResponse.ok) throw new Error(withdrawalsData.detail || "Unable to load withdrawals");
+
         setDashboard(dashboardData);
         setKycTotal(kycData.total);
+        setDeposits(depositsData.items || []);
+        setWithdrawals(withdrawalsData.items || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load dashboard");
       } finally {
@@ -187,8 +265,8 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        <Section title="Recent Deposits"><EmptyActivity title="Deposit activity" href="/admin/deposits" description="Recent deposit data will be connected to the admin deposits API." /></Section>
-        <Section title="Recent Withdrawals"><EmptyActivity title="Withdrawal activity" href="/admin/withdrawals" description="Recent withdrawal data will be connected to the admin withdrawals API." /></Section>
+        <ActivityTable title="Recent Deposits" href="/admin/deposits" rows={deposits} loading={loading} type="deposits" />
+        <ActivityTable title="Recent Withdrawals" href="/admin/withdrawals" rows={withdrawals} loading={loading} type="withdrawals" />
       </div>
 
       <footer className="flex flex-col gap-2 border-t border-slate-800 pt-4 text-[10px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
