@@ -8,14 +8,16 @@ import { clearAdminSession, getAdminMe, type AdminSession } from "@/lib/adminApi
 
 const nav = [
   { href: "/admin", label: "Dashboard", icon: "▦", permission: "USER_READ" },
-  { href: "/admin/users", label: "Users", icon: "◉", permission: "USER_READ" },
-  { href: "/admin/kyc", label: "KYC", icon: "✓", permission: "KYC_READ" },
-  { href: "/admin/deposits", label: "Deposits", icon: "↓", permission: "DEPOSIT_READ" },
-  { href: "/admin/withdrawals", label: "Withdrawals", icon: "↑", permission: "WITHDRAWAL_READ" },
-  { href: "/admin/orders", label: "Orders", icon: "⇄", permission: "ORDER_READ" },
+  { href: "/admin/users", label: "Users", icon: "♙", permission: "USER_READ" },
+  { href: "/admin/kyc", label: "KYC Management", icon: "▣", permission: "KYC_READ" },
+  { href: "/admin/deposits", label: "Deposits", icon: "◈", permission: "DEPOSIT_READ" },
+  { href: "/admin/withdrawals", label: "Withdrawals", icon: "◈", permission: "WITHDRAWAL_READ" },
+  { href: "/admin/orders", label: "Orders", icon: "☷", permission: "ORDER_READ" },
+  { href: "/admin/orders", label: "Trading", icon: "⌁", permission: "ORDER_READ" },
   { href: "/admin/ledger", label: "Ledger", icon: "▤", permission: "LEDGER_READ" },
-  { href: "/admin/audit", label: "Audit Log", icon: "◷", permission: "AUDIT_READ" },
-  { href: "/admin/settings", label: "Admin RBAC", icon: "⚙", permission: "ADMIN_MANAGE" },
+  { href: "/admin/audit", label: "Audit Logs", icon: "◷", permission: "AUDIT_READ" },
+  { href: "/admin/settings", label: "RBAC", icon: "♙", permission: "ADMIN_MANAGE" },
+  { href: "/admin/settings", label: "Settings", icon: "⚙", permission: "ADMIN_MANAGE" },
 ];
 
 export default function AdminShell({ children }: { children: ReactNode }) {
@@ -23,6 +25,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<AdminSession | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (pathname === "/admin/login") {
@@ -41,13 +44,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     router.replace("/admin/login");
   };
 
-  if (pathname === "/admin/login") {
-    return <>{children}</>;
-  }
+  if (pathname === "/admin/login") return <>{children}</>;
 
   if (checkingAuth || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#080d18] text-sm text-slate-400">
+      <div className="flex min-h-screen items-center justify-center bg-[#070c16] text-sm text-slate-400">
         Checking admin session…
       </div>
     );
@@ -57,60 +58,84 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const activeItem = visibleNav.find((item) =>
     item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href),
   );
+  const initials = (session.full_name || session.email || "A").charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#080d18] text-slate-100 lg:flex">
-      <aside className="hidden w-64 shrink-0 border-r border-slate-800 bg-[#0b111e] lg:flex lg:flex-col">
-        <div className="flex h-20 items-center border-b border-slate-800 px-6">
+    <div className="min-h-screen bg-[#070c16] text-slate-100 lg:flex">
+      <aside className="hidden w-[222px] shrink-0 border-r border-slate-800/90 bg-[#09101c] lg:flex lg:flex-col">
+        <div className="flex h-[62px] items-center gap-3 border-b border-slate-800/90 px-6">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-amber-400/10 text-lg text-amber-300 ring-1 ring-amber-400/30">⬡</div>
           <div>
-            <div className="text-lg font-bold tracking-tight">BitNova</div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-400">Admin Console</div>
+            <div className="text-[17px] font-bold tracking-tight text-white">BITNOVA</div>
+            <div className="text-[10px] font-semibold tracking-[0.18em] text-slate-400">ADMIN</div>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
+
+        <nav className="flex-1 space-y-1 px-3 py-5">
           {visibleNav.map((item) => {
             const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
             return (
               <Link
-                key={item.href}
+                key={`${item.label}-${item.href}`}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium ${active ? "bg-cyan-500/10 text-cyan-300 ring-1 ring-cyan-500/20" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${active ? "bg-indigo-600/90 text-white shadow-lg shadow-indigo-950/40" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"}`}
               >
-                <span className="w-5 text-center text-base">{item.icon}</span>
+                <span className="grid w-5 place-items-center text-base opacity-90">{item.icon}</span>
                 {item.label}
               </Link>
             );
           })}
         </nav>
-        <div className="border-t border-slate-800 p-4">
-          <div className="rounded-xl bg-slate-900/70 p-3">
-            <div className="text-xs text-slate-500">Signed in as</div>
-            <div className="mt-1 text-sm font-semibold">{session.full_name || session.email}</div>
-            <div className="mt-1 text-xs text-cyan-400">{session.permissions.length} permissions</div>
+
+        <div className="border-t border-slate-800/90 p-3">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0c1422] p-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-700 text-sm font-semibold">{initials}</div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-white">{session.full_name || session.email}</div>
+              <div className="text-xs text-emerald-400">Super Admin</div>
+            </div>
+            <button onClick={logout} aria-label="Logout" className="text-slate-500 hover:text-white">⌄</button>
           </div>
         </div>
       </aside>
+
       <main className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-slate-800/90 bg-[#080d18]/95 px-5 backdrop-blur lg:px-8">
-          <div>
-            <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Operations</div>
-            <h1 className="mt-1 text-xl font-semibold">{activeItem?.label ?? "Admin Console"}</h1>
+        <header className="sticky top-0 z-20 flex h-[62px] items-center justify-between border-b border-slate-800/90 bg-[#070c16]/95 px-4 backdrop-blur lg:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <button className="grid h-9 w-9 place-items-center rounded-lg border border-slate-800 bg-[#0c1422] text-slate-300 hover:text-white lg:hidden">☰</button>
+            <div className="relative hidden sm:block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">⌕</span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search anything..."
+                className="h-9 w-72 rounded-lg border border-slate-800 bg-[#0c1422] pl-9 pr-16 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-indigo-500/60"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-600">Ctrl + K</span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 sm:block">● RBAC enforced</div>
-            <button onClick={logout} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-white">Logout</button>
+          <div className="flex items-center gap-2.5">
+            <button className="relative grid h-9 w-9 place-items-center rounded-lg border border-slate-800 bg-[#0c1422] text-slate-400 hover:text-white" aria-label="Notifications">♧<span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" /></button>
+            <button className="grid h-9 w-9 place-items-center rounded-lg border border-slate-800 bg-[#0c1422] text-slate-400 hover:text-white" aria-label="Help">?</button>
+            <div className="hidden h-8 w-px bg-slate-800 sm:block" />
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-indigo-500/80 text-sm font-semibold">{initials}</div>
+            <div className="hidden sm:block">
+              <div className="text-xs font-semibold text-white">{session.full_name || "Admin"}</div>
+              <div className="text-[10px] text-slate-500">Super Admin</div>
+            </div>
+            <button onClick={logout} className="hidden text-slate-500 hover:text-white sm:block">⌄</button>
           </div>
         </header>
-        <div className="border-b border-slate-800 bg-[#0b111e] px-4 py-2 lg:hidden">
-          <div className="flex gap-2 overflow-x-auto pb-1">
+
+        <div className="border-b border-slate-800/80 bg-[#09101c] px-3 py-2 lg:hidden">
+          <div className="flex gap-2 overflow-x-auto">
             {visibleNav.map((item) => (
-              <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300">
-                {item.label}
-              </Link>
+              <Link key={`mobile-${item.label}`} href={item.href} className="whitespace-nowrap rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300">{item.label}</Link>
             ))}
           </div>
         </div>
-        <section className="p-5 lg:p-8">{children}</section>
+
+        <section className="p-4 sm:p-5 lg:p-6 xl:p-7">{children}</section>
       </main>
     </div>
   );
