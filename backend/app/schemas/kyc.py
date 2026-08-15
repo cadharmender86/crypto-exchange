@@ -4,6 +4,27 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
+class KYCSubmitRequest(BaseModel):
+    document_type: str = Field(min_length=2, max_length=50)
+    document_reference: str = Field(min_length=2, max_length=255)
+    extra_data: dict | None = None
+
+
+class KYCUserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    status: str
+    document_type: str | None = None
+    document_reference: str | None = None
+    submitted_at: datetime | None = None
+    reviewed_at: datetime | None = None
+    rejection_reason: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class KYCResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
