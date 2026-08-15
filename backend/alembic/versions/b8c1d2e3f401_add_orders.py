@@ -1,7 +1,7 @@
 """add orders table
 
 Revision ID: b8c1d2e3f401
-Revises: 7a1c2d9e4f10
+Revises: 9c3e5f7a2b41
 Create Date: 2026-08-16
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "b8c1d2e3f401"
-down_revision: Union[str, Sequence[str], None] = "7a1c2d9e4f10"
+down_revision: Union[str, Sequence[str], None] = "9c3e5f7a2b41"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
