@@ -10,6 +10,7 @@ from app.models.wallet import Wallet
 from app.models.wallet_address import WalletAddress
 from app.models.deposit import Deposit
 from app.models.withdrawal import Withdrawal
+from app.models.admin import AdminUser, AdminRole, AdminPermission, AuditLog
 
 __all__ = [
     "Base",
@@ -24,4 +25,8 @@ __all__ = [
     "WalletAddress",
     "Deposit",
     "Withdrawal",
+    "AdminUser",
+    "AdminRole",
+    "AdminPermission",
+    "AuditLog",
 ]
