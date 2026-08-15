@@ -1,2 +1,2 @@
-import AdminTablePage from "@/components/admin/AdminTablePage";
-export default function Page() { return <AdminTablePage section="withdrawals" />; }
+import TransactionManagement from "@/components/admin/TransactionManagement";
+export default function Page() { return <TransactionManagement mode="withdrawals" />; }
