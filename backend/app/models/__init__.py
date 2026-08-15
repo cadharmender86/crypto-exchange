@@ -11,6 +11,7 @@ from app.models.wallet_address import WalletAddress
 from app.models.deposit import Deposit
 from app.models.withdrawal import Withdrawal
 from app.models.admin import AdminUser, AdminRole, AdminPermission, AuditLog
+from app.models.kyc import KYCRecord, KYCStatus
 
 __all__ = [
     "Base",
@@ -29,4 +30,6 @@ __all__ = [
     "AdminRole",
     "AdminPermission",
     "AuditLog",
+    "KYCRecord",
+    "KYCStatus",
 ]
