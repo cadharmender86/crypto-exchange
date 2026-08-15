@@ -8,6 +8,7 @@ from app.api.v1.admin_kyc import router as admin_kyc_router
 from app.api.v1.admin_rbac import router as admin_rbac_router
 from app.api.v1.admin_withdrawals import router as admin_withdrawals_router
 from app.api.v1.admin_orders import router as admin_orders_router
+from app.api.v1.orders import router as orders_router
 from app.api.v1.assets import router as assets_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.health import router as health_router
@@ -30,6 +31,7 @@ api_router.include_router(admin_kyc_router)
 api_router.include_router(admin_deposits_router)
 api_router.include_router(admin_withdrawals_router)
 api_router.include_router(admin_orders_router)
+api_router.include_router(orders_router)
 api_router.include_router(accounts_router)
 api_router.include_router(deposits_router)
 api_router.include_router(ledger_router)
