@@ -1,15 +1,19 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class AdminPermissionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
     description: str | None = None
 
 
 class AdminRoleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
     description: str | None = None
@@ -24,6 +28,8 @@ class AdminRoleAssignmentRequest(BaseModel):
 
 
 class AdminRbacUserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     email: EmailStr
     full_name: str
@@ -34,5 +40,7 @@ class AdminRbacUserResponse(BaseModel):
 
 
 class AdminRbacUserListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     items: list[AdminRbacUserResponse]
     total: int
