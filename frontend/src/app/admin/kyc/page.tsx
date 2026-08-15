@@ -1,2 +1,5 @@
-import AdminTablePage from "@/components/admin/AdminTablePage";
-export default function Page() { return <AdminTablePage section="kyc" />; }
+import KycManagement from "@/components/admin/KycManagement";
+
+export default function Page() {
+  return <KycManagement />;
+}
