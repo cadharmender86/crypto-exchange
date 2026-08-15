@@ -1,11 +1,13 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
 from app.api.v1.admin_auth import require_permission
+from app.api.v1.auth import hash_password
 from app.models.admin import (
     AdminPermission,
     AdminRole,
@@ -14,6 +16,7 @@ from app.models.admin import (
     admin_user_roles,
 )
 from app.schemas.admin_rbac import (
+    AdminCreateRequest,
     AdminPermissionResponse,
     AdminRbacUserListResponse,
     AdminRbacUserResponse,
@@ -101,6 +104,69 @@ async def list_admins(
             for admin in admins
         ],
         total=len(admins),
+    )
+
+
+@router.post("/admins", response_model=AdminRbacUserResponse, status_code=status.HTTP_201_CREATED)
+async def create_admin(
+    payload: AdminCreateRequest,
+    request: Request,
+    actor: AdminUser = Depends(require_permission("ADMIN_MANAGE")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create an administrator with any active seeded role, including SUPER_ADMIN."""
+    await require_super_admin(actor, db)
+
+    email = str(payload.email).strip().lower()
+    existing = await db.execute(select(AdminUser.id).where(AdminUser.email == email))
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Admin email already exists")
+
+    role_result = await db.execute(
+        select(AdminRole).where(AdminRole.id == payload.role_id, AdminRole.is_active.is_(True))
+    )
+    role = role_result.scalar_one_or_none()
+    if role is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active role not found")
+
+    target = AdminUser(
+        email=email,
+        password_hash=hash_password(payload.password),
+        full_name=payload.full_name.strip(),
+        is_active=True,
+        is_locked=False,
+    )
+    target.roles = [role]
+    db.add(target)
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Admin email already exists") from exc
+
+    db.add(AuditLog(
+        admin_user_id=actor.id,
+        action="ADMIN_CREATED",
+        resource_type="ADMIN_USER",
+        resource_id=str(target.id),
+        old_value=None,
+        new_value={"email": target.email, "full_name": target.full_name, "role": role.name},
+        result="SUCCESS",
+        reason=payload.reason,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    ))
+    await db.commit()
+    await db.refresh(target)
+
+    return AdminRbacUserResponse(
+        id=target.id,
+        email=target.email,
+        full_name=target.full_name,
+        is_active=target.is_active,
+        is_locked=target.is_locked,
+        roles=[role.name for role in target.roles],
+        last_login_at=None,
     )
 
 
