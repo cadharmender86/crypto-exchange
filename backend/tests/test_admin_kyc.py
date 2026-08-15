@@ -1,24 +1,54 @@
-from uuid import uuid4
+import pytest
+from fastapi import HTTPException
 
+from app.api.v1.admin_auth import require_permission
 from app.models.kyc import KYCStatus
 
 
+class DummyAdmin:
+    id = "admin-test"
+
+
+@pytest.mark.asyncio
+async def test_kyc_approve_requires_kyc_approve_permission() -> None:
+    dependency = require_permission("KYC_APPROVE")
+
+    assert await dependency(DummyAdmin(), {"KYC_APPROVE"}) is not None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(DummyAdmin(), {"KYC_READ"})
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Insufficient admin permissions"
+
+
+@pytest.mark.asyncio
+async def test_kyc_reject_requires_kyc_reject_permission() -> None:
+    dependency = require_permission("KYC_REJECT")
+
+    assert await dependency(DummyAdmin(), {"KYC_REJECT"}) is not None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(DummyAdmin(), {"KYC_READ"})
+
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_kyc_read_permission_does_not_grant_approval() -> None:
+    dependency = require_permission("KYC_APPROVE")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(DummyAdmin(), {"KYC_READ"})
+
+    assert exc_info.value.status_code == 403
+
+
 def test_kyc_status_values() -> None:
-    assert KYCStatus.PENDING.value == "PENDING"
-    assert KYCStatus.UNDER_REVIEW.value == "UNDER_REVIEW"
-    assert KYCStatus.APPROVED.value == "APPROVED"
-    assert KYCStatus.REJECTED.value == "REJECTED"
-    assert KYCStatus.REQUIRES_REVERIFICATION.value == "REQUIRES_REVERIFICATION"
-
-
-def test_kyc_review_endpoints_require_distinct_permissions() -> None:
-    from app.api.v1.admin_kyc import approve_kyc, reject_kyc, mark_kyc_under_review
-
-    assert "KYC_APPROVE" in str(approve_kyc.__dict__) or approve_kyc is not None
-    assert "KYC_REJECT" in str(reject_kyc.__dict__) or reject_kyc is not None
-    assert "KYC_READ" in str(mark_kyc_under_review.__dict__) or mark_kyc_under_review is not None
-
-
-def test_kyc_id_is_uuid() -> None:
-    kyc_id = uuid4()
-    assert isinstance(kyc_id, type(uuid4()))
+    assert [status.value for status in KYCStatus] == [
+        "PENDING",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "REQUIRES_REVERIFICATION",
+    ]
