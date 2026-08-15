@@ -11,6 +11,7 @@ from app.models.wallet_address import WalletAddress
 from app.models.deposit import Deposit
 from app.models.withdrawal import Withdrawal
 from app.models.order import Order
+from app.models.trade import Trade
 from app.models.admin import AdminUser, AdminRole, AdminPermission, AuditLog
 from app.models.kyc import KYCRecord, KYCStatus
 
@@ -28,6 +29,7 @@ __all__ = [
     "Deposit",
     "Withdrawal",
     "Order",
+    "Trade",
     "AdminUser",
     "AdminRole",
     "AdminPermission",
