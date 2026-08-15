@@ -24,6 +24,29 @@ from app.schemas.admin_rbac import (
 router = APIRouter(prefix="/admin/rbac", tags=["Admin RBAC"])
 
 
+async def require_super_admin(
+    admin: AdminUser,
+    db: AsyncSession,
+) -> AdminUser:
+    """Allow administrator-account management only to SUPER_ADMIN users."""
+    result = await db.execute(
+        select(AdminRole.id)
+        .join(admin_user_roles, admin_user_roles.c.role_id == AdminRole.id)
+        .where(
+            admin_user_roles.c.admin_user_id == admin.id,
+            AdminRole.name == "SUPER_ADMIN",
+            AdminRole.is_active.is_(True),
+        )
+        .limit(1)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only SUPER_ADMIN can manage administrator accounts",
+        )
+    return admin
+
+
 @router.get("/roles", response_model=list[AdminRoleResponse])
 async def list_roles(
     _: AdminUser = Depends(require_permission("ADMIN_MANAGE")),
@@ -89,6 +112,8 @@ async def assign_roles(
     actor: AdminUser = Depends(require_permission("ADMIN_MANAGE")),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_super_admin(actor, db)
+
     result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -102,6 +127,8 @@ async def assign_roles(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one role is required")
     if any(not role.is_active for role in roles):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive roles cannot be assigned")
+    if any(role.name == "SUPER_ADMIN" for role in roles):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="SUPER_ADMIN cannot be assigned through RBAC management")
 
     old_roles = [role.name for role in target.roles]
     target.roles = list(roles)
