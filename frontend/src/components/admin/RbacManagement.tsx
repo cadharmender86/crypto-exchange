@@ -66,18 +66,34 @@ export default function RbacManagement() {
 
   async function createAdmin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const email = form.email.trim();
+    const fullName = form.full_name.trim();
+    const password = form.password;
+    const reason = form.reason.trim();
+
+    if (!fullName || !email || !password || !form.role_id || !reason) {
+      setError("All fields are mandatory.");
+      return;
+    }
+    if (fullName.length < 2) {
+      setError("Full name must contain at least 2 characters.");
+      return;
+    }
+    if (password.length < 12) {
+      setError("Initial password must contain at least 12 characters.");
+      return;
+    }
+    if (reason.length < 3) {
+      setError("Reason must contain at least 3 characters.");
+      return;
+    }
+
     setCreating(true); setError(""); setNotice("");
     try {
       const response = await adminFetch("/api/v1/admin/rbac/admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email.trim(),
-          full_name: form.full_name.trim(),
-          password: form.password,
-          role_id: form.role_id,
-          reason: form.reason.trim(),
-        }),
+        body: JSON.stringify({ email, full_name: fullName, password, role_id: form.role_id, reason }),
       });
       const data = (await response.json()) as Admin & { detail?: string };
       if (!response.ok) throw new Error(data.detail || "Unable to create administrator");
@@ -102,11 +118,11 @@ export default function RbacManagement() {
       <section className="rounded-2xl border border-cyan-500/20 bg-[#0d1422] p-5">
         <div className="mb-4 flex items-center justify-between"><div><h3 className="font-semibold">Create Administrator</h3><p className="mt-1 text-xs text-slate-500">Only SUPER_ADMIN can create administrators. You may create another SUPER_ADMIN or a restricted staff administrator.</p></div><button type="button" onClick={() => { setShowCreateForm(false); setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" }); }} className="text-xs text-slate-500 hover:text-white">Cancel</button></div>
         <form onSubmit={createAdmin} className="grid gap-4 md:grid-cols-2">
-          <label className="text-xs text-slate-400">Full name<input required minLength={2} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
-          <label className="text-xs text-slate-400">Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
-          <label className="text-xs text-slate-400">Initial password<input required minLength={12} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
-          <label className="text-xs text-slate-400">Role<select required value={form.role_id} onChange={(e) => setForm({ ...form, role_id: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-500"><option value="">Select role</option>{roles.filter((r) => r.is_active).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></label>
-          <label className="text-xs text-slate-400 md:col-span-2">Reason<input required minLength={3} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Why is this administrator being created?" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
+          <label className="text-xs text-slate-400">Full name <span className="text-red-400">*</span><input required aria-required="true" minLength={2} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
+          <label className="text-xs text-slate-400">Email <span className="text-red-400">*</span><input required aria-required="true" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
+          <label className="text-xs text-slate-400">Initial password <span className="text-red-400">*</span><input required aria-required="true" minLength={12} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
+          <label className="text-xs text-slate-400">Role <span className="text-red-400">*</span><select required aria-required="true" value={form.role_id} onChange={(e) => setForm({ ...form, role_id: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-500"><option value="">Select role</option>{roles.filter((r) => r.is_active).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></label>
+          <label className="text-xs text-slate-400 md:col-span-2">Reason <span className="text-red-400">*</span><input required aria-required="true" minLength={3} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Why is this administrator being created?" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
           <div className="md:col-span-2 flex justify-end"><button disabled={creating} className="rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">{creating ? "Creating..." : "Create Administrator"}</button></div>
         </form>
       </section>
