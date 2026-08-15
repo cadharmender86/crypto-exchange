@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { adminFetch } from "@/lib/adminApi";
 
 type Permission = { id: string; name: string; description: string | null };
@@ -15,6 +15,7 @@ export default function RbacManagement() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [form, setForm] = useState({ email: "", full_name: "", password: "", role_id: "", reason: "" });
@@ -63,7 +64,7 @@ export default function RbacManagement() {
     finally { setSaving(null); }
   }
 
-  async function createAdmin(event: React.FormEvent<HTMLFormElement>) {
+  async function createAdmin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreating(true); setError(""); setNotice("");
     try {
@@ -83,6 +84,7 @@ export default function RbacManagement() {
       setAdmins((items) => [data, ...items]);
       setSelected((items) => ({ ...items, [data.id]: data.roles[0] || "" }));
       setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" });
+      setShowCreateForm(false);
       setNotice(`Administrator ${data.email} created successfully.`);
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to create administrator"); }
     finally { setCreating(false); }
@@ -91,14 +93,14 @@ export default function RbacManagement() {
   return <div className="mx-auto max-w-7xl space-y-6">
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div><h2 className="text-2xl font-bold tracking-tight">Admin RBAC</h2><p className="mt-2 text-sm text-slate-500">Manage administrator accounts, roles and permissions.</p></div>
-      <button onClick={() => setForm((value) => ({ ...value, role_id: value.role_id || roles.find((r) => r.name === "SUPER_ADMIN")?.id || roles.find((r) => r.is_active)?.id || "" }))} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950">+ Create Administrator</button>
+      <button onClick={() => { setShowCreateForm(true); setError(""); setNotice(""); }} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950">+ Create Administrator</button>
     </div>
     {error && <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-300">{error}</div>}
     {notice && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-emerald-300">{notice}</div>}
 
-    {form.role_id && (
+    {showCreateForm && (
       <section className="rounded-2xl border border-cyan-500/20 bg-[#0d1422] p-5">
-        <div className="mb-4 flex items-center justify-between"><div><h3 className="font-semibold">Create Administrator</h3><p className="mt-1 text-xs text-slate-500">Only SUPER_ADMIN can create administrators. You may create another SUPER_ADMIN or a restricted staff administrator.</p></div><button type="button" onClick={() => setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" })} className="text-xs text-slate-500 hover:text-white">Cancel</button></div>
+        <div className="mb-4 flex items-center justify-between"><div><h3 className="font-semibold">Create Administrator</h3><p className="mt-1 text-xs text-slate-500">Only SUPER_ADMIN can create administrators. You may create another SUPER_ADMIN or a restricted staff administrator.</p></div><button type="button" onClick={() => { setShowCreateForm(false); setForm({ email: "", full_name: "", password: "", role_id: "", reason: "" }); }} className="text-xs text-slate-500 hover:text-white">Cancel</button></div>
         <form onSubmit={createAdmin} className="grid gap-4 md:grid-cols-2">
           <label className="text-xs text-slate-400">Full name<input required minLength={2} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
           <label className="text-xs text-slate-400">Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500" /></label>
