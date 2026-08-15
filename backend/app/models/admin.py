@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Table, Column
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Table, Column, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -89,4 +89,6 @@ class AuditLog(UUIDPrimaryKeyMixin, Base):
     user_agent: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     result: Mapped[str] = mapped_column(String(30), nullable=False)
     reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
