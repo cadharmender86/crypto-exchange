@@ -12,19 +12,138 @@ from app.services.ledger_service import LedgerService
 
 
 class WithdrawalService:
-    """Provider-independent withdrawal creation and internal settlement.
+    """Provider-independent withdrawal lifecycle and settlement service.
 
     The service deliberately does not commit. The caller owns the database
-    transaction so the withdrawal, balance lock, and ledger entries are
-    committed or rolled back atomically.
+    transaction so withdrawal state, balance changes, and ledger entries can
+    be committed or rolled back atomically.
     """
 
     PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
     SYSTEM_ACCOUNT_TYPE = "SYSTEM_TREASURY"
     CUSTOMER_ACCOUNT_TYPE = "CUSTOMER"
+
+    ALLOWED_TRANSITIONS = {
+        PENDING: {APPROVED, REJECTED},
+        APPROVED: {PROCESSING},
+        PROCESSING: {COMPLETED, FAILED},
+    }
+
+    @staticmethod
+    def _transition(withdrawal: Withdrawal, target_status: str) -> None:
+        allowed = WithdrawalService.ALLOWED_TRANSITIONS.get(withdrawal.status, set())
+        if target_status not in allowed:
+            raise ValueError(
+                f"Invalid withdrawal transition: {withdrawal.status} -> {target_status}"
+            )
+        withdrawal.status = target_status
+
+    @staticmethod
+    async def approve_withdrawal(
+        db: AsyncSession,
+        *,
+        withdrawal_id: UUID,
+    ) -> Withdrawal:
+        result = await db.execute(
+            select(Withdrawal)
+            .where(Withdrawal.id == withdrawal_id)
+            .with_for_update()
+        )
+        withdrawal = result.scalar_one_or_none()
+        if withdrawal is None:
+            raise ValueError("Withdrawal not found")
+
+        WithdrawalService._transition(withdrawal, WithdrawalService.APPROVED)
+        await db.flush()
+        return withdrawal
+
+    @staticmethod
+    async def reject_withdrawal(
+        db: AsyncSession,
+        *,
+        withdrawal_id: UUID,
+    ) -> Withdrawal:
+        result = await db.execute(
+            select(Withdrawal)
+            .where(Withdrawal.id == withdrawal_id)
+            .with_for_update()
+        )
+        withdrawal = result.scalar_one_or_none()
+        if withdrawal is None:
+            raise ValueError("Withdrawal not found")
+
+        account = await BalanceService.get_locked_account(db, withdrawal.account_id)
+        await BalanceService.unlock(account, withdrawal.amount)
+        WithdrawalService._transition(withdrawal, WithdrawalService.REJECTED)
+        await db.flush()
+        return withdrawal
+
+    @staticmethod
+    async def start_processing(
+        db: AsyncSession,
+        *,
+        withdrawal_id: UUID,
+    ) -> Withdrawal:
+        result = await db.execute(
+            select(Withdrawal)
+            .where(Withdrawal.id == withdrawal_id)
+            .with_for_update()
+        )
+        withdrawal = result.scalar_one_or_none()
+        if withdrawal is None:
+            raise ValueError("Withdrawal not found")
+
+        WithdrawalService._transition(withdrawal, WithdrawalService.PROCESSING)
+        await db.flush()
+        return withdrawal
+
+    @staticmethod
+    async def complete_withdrawal(
+        db: AsyncSession,
+        *,
+        withdrawal_id: UUID,
+    ) -> Withdrawal:
+        result = await db.execute(
+            select(Withdrawal)
+            .where(Withdrawal.id == withdrawal_id)
+            .with_for_update()
+        )
+        withdrawal = result.scalar_one_or_none()
+        if withdrawal is None:
+            raise ValueError("Withdrawal not found")
+
+        account = await BalanceService.get_locked_account(db, withdrawal.account_id)
+        await BalanceService.unlock(account, withdrawal.amount)
+        WithdrawalService._transition(withdrawal, WithdrawalService.COMPLETED)
+        await db.flush()
+        return withdrawal
+
+    @staticmethod
+    async def fail_withdrawal(
+        db: AsyncSession,
+        *,
+        withdrawal_id: UUID,
+    ) -> Withdrawal:
+        result = await db.execute(
+            select(Withdrawal)
+            .where(Withdrawal.id == withdrawal_id)
+            .with_for_update()
+        )
+        withdrawal = result.scalar_one_or_none()
+        if withdrawal is None:
+            raise ValueError("Withdrawal not found")
+
+        account = await BalanceService.get_locked_account(db, withdrawal.account_id)
+        await BalanceService.unlock(account, withdrawal.amount)
+        WithdrawalService._transition(withdrawal, WithdrawalService.FAILED)
+        await db.flush()
+        return withdrawal
 
     @staticmethod
     async def create_pending_withdrawal(
@@ -38,57 +157,35 @@ class WithdrawalService:
         idempotency_key: str,
     ) -> Withdrawal:
         amount = BalanceService._amount(amount)
-
         network = network.strip().upper()
         destination_address = destination_address.strip()
         idempotency_key = idempotency_key.strip()
 
         if not network:
             raise ValueError("Network is required")
-
         if not destination_address:
             raise ValueError("Destination address is required")
-
         if not idempotency_key:
             raise ValueError("Idempotency key is required")
 
-        # --------------------------------------------------------
-        # Validate asset
-        # --------------------------------------------------------
-
         asset_result = await db.execute(
-            select(Asset)
-            .where(Asset.id == asset_id)
-            .with_for_update()
+            select(Asset).where(Asset.id == asset_id).with_for_update()
         )
-
         asset = asset_result.scalar_one_or_none()
-
         if asset is None:
             raise ValueError("Asset not found")
-
         if not asset.is_active:
             raise ValueError("Asset is inactive")
-
         if not asset.withdrawal_enabled:
-            raise ValueError(
-                "Withdrawals are disabled for this asset"
-            )
-
-        # --------------------------------------------------------
-        # Idempotency
-        # --------------------------------------------------------
+            raise ValueError("Withdrawals are disabled for this asset")
 
         existing_result = await db.execute(
-            select(Withdrawal)
-            .where(
+            select(Withdrawal).where(
                 Withdrawal.user_id == user_id,
                 Withdrawal.idempotency_key == idempotency_key,
             )
         )
-
         existing = existing_result.scalar_one_or_none()
-
         if existing is not None:
             if (
                 existing.asset_id != asset_id
@@ -99,63 +196,31 @@ class WithdrawalService:
                 raise ValueError(
                     "Idempotency key already used with different withdrawal parameters"
                 )
-
             return existing
 
-        # --------------------------------------------------------
-        # Lock customer account
-        # --------------------------------------------------------
-
         customer_result = await db.execute(
-            select(Account)
-            .where(
+            select(Account).where(
                 Account.user_id == user_id,
                 Account.asset_id == asset_id,
-                Account.account_type
-                == WithdrawalService.CUSTOMER_ACCOUNT_TYPE,
-            )
-            .with_for_update()
+                Account.account_type == WithdrawalService.CUSTOMER_ACCOUNT_TYPE,
+            ).with_for_update()
         )
-
         customer = customer_result.scalar_one_or_none()
-
         if customer is None:
-            raise ValueError(
-                "Customer account does not exist"
-            )
-
-        # --------------------------------------------------------
-        # Lock withdrawal funds
-        # --------------------------------------------------------
+            raise ValueError("Customer account does not exist")
 
         await BalanceService.lock(customer, amount)
 
-        # --------------------------------------------------------
-        # Lock system treasury account
-        # --------------------------------------------------------
-
         treasury_result = await db.execute(
-            select(Account)
-            .where(
-                Account.account_type
-                == WithdrawalService.SYSTEM_ACCOUNT_TYPE,
+            select(Account).where(
+                Account.account_type == WithdrawalService.SYSTEM_ACCOUNT_TYPE,
                 Account.asset_id == asset_id,
-            )
-            .with_for_update()
+            ).with_for_update()
         )
-
         treasury = treasury_result.scalar_one_or_none()
-
         if treasury is None:
-            raise ValueError(
-                "System treasury account does not exist"
-            )
-
+            raise ValueError("System treasury account does not exist")
         BalanceService._validate_account(treasury)
-
-        # --------------------------------------------------------
-        # Create withdrawal
-        # --------------------------------------------------------
 
         withdrawal = Withdrawal(
             user_id=user_id,
@@ -167,38 +232,18 @@ class WithdrawalService:
             status=WithdrawalService.PENDING,
             idempotency_key=idempotency_key,
         )
-
         db.add(withdrawal)
-
         await db.flush()
-
-        # --------------------------------------------------------
-        # Balanced ledger transaction
-        # --------------------------------------------------------
 
         transaction = await LedgerService.create_transaction(
             db,
             transaction_type="WITHDRAWAL",
             entries=[
-                {
-                    "account_id": customer.id,
-                    "entry_type": "DEBIT",
-                    "amount": amount,
-                },
-                {
-                    "account_id": treasury.id,
-                    "entry_type": "CREDIT",
-                    "amount": amount,
-                },
+                {"account_id": customer.id, "entry_type": "DEBIT", "amount": amount},
+                {"account_id": treasury.id, "entry_type": "CREDIT", "amount": amount},
             ],
-            description=(
-                f"Customer withdrawal "
-                f"{network}:{destination_address}"
-            ),
+            description=f"Customer withdrawal {network}:{destination_address}",
         )
-
         withdrawal.ledger_transaction_id = transaction.id
-
         await db.flush()
-
         return withdrawal
