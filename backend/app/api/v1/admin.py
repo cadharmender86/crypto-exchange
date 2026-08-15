@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_db
 from app.api.v1.admin_auth import require_permission
 from app.models.admin import AdminUser, AuditLog
+from app.models.asset import Asset
+from app.models.deposit import Deposit
+from app.models.kyc import KYCRecord, KYCStatus
 from app.models.user import User
+from app.models.withdrawal import Withdrawal
 from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardResponse,
@@ -148,13 +152,46 @@ async def dashboard(
     _: AdminUser = Depends(require_permission("USER_READ")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(
+    user_counts = await db.execute(select(
         func.count(User.id),
         func.count(User.id).filter(User.is_active.is_(True)),
         func.count(User.id).filter(User.is_verified.is_(True)),
     ))
-    total, active, verified = result.one()
-    return AdminDashboardResponse(total_users=total, active_users=active, verified_users=verified)
+    total_users, active_users, verified_users = user_counts.one()
+
+    pending_kyc = (
+        await db.execute(
+            select(func.count(KYCRecord.id)).where(
+                KYCRecord.status.in_([
+                    KYCStatus.PENDING.value,
+                    KYCStatus.UNDER_REVIEW.value,
+                    KYCStatus.REQUIRES_REVERIFICATION.value,
+                ])
+            )
+        )
+    ).scalar_one()
+
+    total_deposits = (await db.execute(select(func.count(Deposit.id)))).scalar_one()
+    total_withdrawals = (await db.execute(select(func.count(Withdrawal.id)))).scalar_one()
+    pending_withdrawals = (
+        await db.execute(
+            select(func.count(Withdrawal.id)).where(Withdrawal.status == "PENDING")
+        )
+    ).scalar_one()
+    active_assets = (
+        await db.execute(select(func.count(Asset.id)).where(Asset.is_active.is_(True)))
+    ).scalar_one()
+
+    return AdminDashboardResponse(
+        total_users=total_users,
+        active_users=active_users,
+        verified_users=verified_users,
+        pending_kyc=pending_kyc,
+        total_deposits=total_deposits,
+        total_withdrawals=total_withdrawals,
+        pending_withdrawals=pending_withdrawals,
+        active_assets=active_assets,
+    )
 
 
 @router.get("/audit-logs", response_model=list[AdminAuditLogResponse])
