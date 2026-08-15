@@ -48,14 +48,18 @@ async def list_kyc(
     if search:
         filters.append(func.lower(User.email).like(f"%{search.strip().lower()}%"))
 
-    base = select(KYCRecord).join(User, User.id == KYCRecord.user_id)
     count_result = await db.execute(
-        select(func.count(KYCRecord.id)).select_from(KYCRecord).join(User, User.id == KYCRecord.user_id).where(*filters)
+        select(func.count(KYCRecord.id))
+        .select_from(KYCRecord)
+        .join(User, User.id == KYCRecord.user_id)
+        .where(*filters)
     )
     total = count_result.scalar_one()
 
     result = await db.execute(
-        base.where(*filters)
+        select(KYCRecord, User.email)
+        .join(User, User.id == KYCRecord.user_id)
+        .where(*filters)
         .order_by(KYCRecord.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -63,7 +67,7 @@ async def list_kyc(
 
     rows = result.all()
     return KYCListResponse(
-        items=[_response(record, user.email) for record, user in rows],
+        items=[_response(record, email) for record, email in rows],
         page=page,
         page_size=page_size,
         total=total,
@@ -166,7 +170,7 @@ async def mark_kyc_under_review(
     kyc_id: UUID,
     request: Request,
     payload: KYCReviewRequest,
-    admin: AdminUser = Depends(require_permission("KYC_READ")),
+    admin: AdminUser = Depends(require_permission("KYC_REVIEW")),
     db: AsyncSession = Depends(get_db),
 ):
     return await _review(kyc_id, request, payload, admin, db, KYCStatus.UNDER_REVIEW)
