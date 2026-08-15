@@ -16,4 +16,4 @@ def test_weighted_average_for_partial_fills() -> None:
         OrderStub(), Decimal("110"), Decimal("1")
     )
 
-    assert average == Decimal("103.3333333333333333333333333333333333333333333333333333333333")
+    assert average == Decimal("103.3333333333333333333333333")
