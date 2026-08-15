@@ -1,3 +1,6 @@
+import asyncio
+
+from app.services.blockchain.deposit_worker import (EthereumDepositWorker,)
 from contextlib import asynccontextmanager
 from urllib import response
 
@@ -14,10 +17,30 @@ from app.core.database import close_database
 async def lifespan(app: FastAPI):
     print("Starting BitNova Exchange API...")
 
-    yield
+    deposit_worker = EthereumDepositWorker(poll_interval=5.0)
 
-    print("Shutting down BitNova Exchange API...")
-    await close_database()
+    worker_task = asyncio.create_task(deposit_worker.run())
+
+    app.state.deposit_worker = deposit_worker
+    app.state.deposit_worker_task = worker_task
+
+    try:
+        yield
+
+    finally:
+        print("Stopping Ethereum deposit worker...")
+
+        deposit_worker.stop()
+
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+
+        print("Shutting down BitNova Exchange API...")
+
+        await close_database()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

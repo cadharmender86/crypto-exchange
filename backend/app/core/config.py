@@ -27,12 +27,20 @@ class Settings(BaseSettings):
      # Login brute-force protection
     login_rate_limit_attempts: int = 5
     login_rate_limit_window_seconds: int = 60
-    
+
     # internal_test_deposit_key: str
 
     # Development-only endpoint protection. Keep this out of source control
     # and provide it through backend/.env.
     internal_test_deposit_key: str
+
+    ethereum_network: str = "sepolia"
+
+    tron_network: str = "Testnet"
+
+    bitcoin_network: str = "Testnet"
+
+    alchemy_api_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
