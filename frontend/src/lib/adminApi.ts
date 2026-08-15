@@ -10,6 +10,7 @@ export type AdminSession = {
   email: string;
   full_name: string;
   permissions: string[];
+  roles: string[];
 };
 
 type TokenResponse = {
