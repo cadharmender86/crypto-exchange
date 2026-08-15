@@ -12,7 +12,7 @@ class BalanceService:
 
     This service deliberately does not commit transactions. The caller owns
     the database transaction so balance changes and ledger changes can be
-    be committed or rolled back together.
+    committed or rolled back together.
     """
 
     ZERO = Decimal("0")
@@ -23,7 +23,6 @@ class BalanceService:
             value = Decimal(str(amount))
         except (InvalidOperation, ValueError, TypeError) as exc:
             raise ValueError("Invalid amount") from exc
-
         if not value.is_finite() or value <= BalanceService.ZERO:
             raise ValueError("Amount must be a finite value greater than zero")
         return value
