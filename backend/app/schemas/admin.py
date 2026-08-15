@@ -32,6 +32,11 @@ class AdminDashboardResponse(BaseModel):
     total_users: int
     active_users: int
     verified_users: int
+    pending_kyc: int
+    total_deposits: int
+    total_withdrawals: int
+    pending_withdrawals: int
+    active_assets: int
 
 
 class AdminAuditLogResponse(BaseModel):
