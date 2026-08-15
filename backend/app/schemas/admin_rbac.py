@@ -23,6 +23,14 @@ class AdminRoleAssignmentRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class AdminCreateRequest(BaseModel):
+    email: EmailStr
+    full_name: str = Field(min_length=2, max_length=255)
+    password: str = Field(min_length=12, max_length=128)
+    role_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+
+
 class AdminRbacUserResponse(BaseModel):
     id: UUID
     email: EmailStr
