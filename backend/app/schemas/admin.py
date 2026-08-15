@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class AdminUserDetailResponse(BaseModel):
@@ -22,6 +22,10 @@ class AdminUserListResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class AdminUserActionRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
 
 
 class AdminDashboardResponse(BaseModel):
