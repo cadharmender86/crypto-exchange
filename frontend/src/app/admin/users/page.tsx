@@ -1,2 +1,5 @@
-import AdminTablePage from "@/components/admin/AdminTablePage";
-export default function Page() { return <AdminTablePage section="users" />; }
+import UserManagement from "@/components/admin/UserManagement";
+
+export default function Page() {
+  return <UserManagement />;
+}
