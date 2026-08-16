@@ -1,43 +1,35 @@
 "use client";
 
+import { useState } from "react";
+
 export default function DashboardHeader() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <>
-      <header className="mb-5 flex items-center justify-between rounded-xl border border-white/10 bg-[#0b0f15] px-6 py-4">
-        <div>
-          <h1 className="text-xl font-bold text-white">Dashboard</h1>
-          <p className="text-sm text-gray-400">Welcome back to BitNova 👋</p>
-        </div>
-
+    <header className="sticky top-0 z-30 h-[54px] border-b border-white/[0.06] bg-[#080d12]/95 px-4 backdrop-blur-xl md:px-6 lg:px-5">
+      <div className="flex h-full items-center justify-between">
         <div className="flex items-center gap-4">
-          <button className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold">
-            Deposit
+          <button className="text-lg text-slate-400 transition hover:text-white lg:hidden" aria-label="Open menu">☰</button>
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <span className="text-2xl font-black text-blue-400">N</span>
+            <span className="text-lg font-bold">BitNova</span>
+          </div>
+        </div>
+
+        <div className="ml-auto flex items-center gap-3 md:gap-5">
+          <button className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-1.5 text-xs font-bold shadow-lg shadow-blue-600/20 transition hover:brightness-110 md:px-5">Deposit</button>
+          <button className="relative text-lg text-slate-300 transition hover:text-white" aria-label="Notifications">
+            ♧<span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">2</span>
           </button>
-          <div className="relative text-xl">🔔</div>
-          <div className="rounded-full bg-gray-800 px-3 py-2 text-sm">DK</div>
-          <span className="text-gray-400">⌄</span>
+          <div className="relative">
+            <button onClick={() => setMenuOpen((v) => !v)} className="flex items-center gap-2" aria-expanded={menuOpen}>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#252a31] text-xs font-bold text-slate-200 ring-1 ring-white/10">DK</span>
+              <span className="text-xs text-slate-400">⌄</span>
+            </button>
+            {menuOpen && <div className="absolute right-0 top-10 w-36 rounded-lg border border-white/10 bg-[#11161d] p-2 text-xs shadow-2xl"><button className="w-full rounded px-3 py-2 text-left hover:bg-white/5">Profile</button><button className="w-full rounded px-3 py-2 text-left hover:bg-white/5">Logout</button></div>}
+          </div>
         </div>
-      </header>
-
-      <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-[#111722] p-5">
-          <p className="text-sm text-gray-400">24h Change</p>
-          <p className="mt-2 text-xl font-bold text-green-400">+2.45%</p>
-          <p className="text-xs text-green-400">+₹18,250</p>
-        </div>
-
-        <div className="rounded-xl border border-white/10 bg-[#111722] p-5">
-          <p className="text-sm text-gray-400">Active Assets</p>
-          <p className="mt-2 text-xl font-bold">12 Coins</p>
-          <p className="text-xs text-green-400">+2 from last month</p>
-        </div>
-
-        <div className="rounded-xl border border-white/10 bg-[#111722] p-5">
-          <p className="text-sm text-gray-400">Trading Status</p>
-          <p className="mt-2 text-xl font-bold text-blue-400">Active</p>
-          <p className="text-xs text-green-400">All systems operational</p>
-        </div>
-      </section>
-    </>
+      </div>
+    </header>
   );
 }
