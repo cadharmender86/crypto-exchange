@@ -4,11 +4,11 @@ import { useState } from "react";
 
 const menuItems = [
   { name: "Dashboard", icon: "▣" },
-  { name: "Easy Buy / Sell", icon: "↔" },
+  { name: "Easy Buy / Sell", icon: "⊕" },
   { name: "Trade", icon: "⌁" },
   { name: "Futures", icon: "◉" },
-  { name: "Invest", icon: "◈" },
-  { name: "Earn", icon: "◎" },
+  { name: "Invest", icon: "♧" },
+  { name: "Earn", icon: "✧" },
   { name: "Wallet", icon: "▤" },
   { name: "Orders", icon: "▱" },
   { name: "History", icon: "◷" },
@@ -22,45 +22,31 @@ export default function Sidebar() {
   const [active, setActive] = useState("Dashboard");
 
   return (
-    <aside className="hidden lg:flex w-64 min-h-screen flex-col border-r border-white/10 bg-[#070b10] text-white">
-      <div className="px-5 py-6 text-2xl font-bold tracking-wide">
-        <span className="text-blue-500">N</span> BitNova
+    <aside className="flex h-screen w-[180px] flex-col border-r border-white/[0.07] bg-[#080d12] text-white">
+      <div className="flex h-[54px] items-center gap-2 border-b border-white/[0.05] px-4">
+        <span className="text-[27px] font-black leading-none text-blue-500">N</span>
+        <span className="text-[17px] font-bold tracking-tight">BitNova</span>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
         {menuItems.map((item) => (
-          <button
-            key={item.name}
-            onClick={() => setActive(item.name)}
-            className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition ${
-              active === item.name
-                ? "bg-blue-600/20 text-blue-400 border border-blue-500/20"
-                : "text-gray-300 hover:bg-white/5"
-            }`}
-          >
-            <span className="w-5 text-center">{item.icon}</span>
-            <span>{item.name}</span>
+          <button key={item.name} onClick={() => setActive(item.name)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition ${active === item.name ? "border border-blue-500/10 bg-[#102443] text-blue-400 shadow-[0_5px_20px_rgba(0,95,255,.08)]" : "text-slate-300 hover:bg-white/[0.04] hover:text-white"}`}>
+            <span className="w-4 text-center text-sm text-slate-300">{item.icon}</span><span className="truncate">{item.name}</span>
+            {item.name === "More" && <span className="ml-auto text-[10px] text-slate-500">⌄</span>}
           </button>
         ))}
       </nav>
 
-      <div className="m-4 rounded-xl border border-white/10 bg-[#111722] p-4 text-sm">
-        <p className="font-semibold">BitNova App</p>
-        <p className="mt-2 text-gray-400">Trade on the go</p>
-        <p className="text-gray-400">Anytime, Anywhere</p>
-        <button className="mt-3 w-full rounded-lg bg-blue-600 py-2 text-sm">
-          Download
-        </button>
+      <div className="mx-3 mb-4 rounded-lg border border-white/[0.06] bg-[#0d141c] p-3">
+        <p className="text-xs font-bold">BitNova App</p>
+        <p className="mt-2 text-[11px] text-slate-300">Trade on the go</p>
+        <p className="text-[11px] text-slate-300">Anytime, Anywhere</p>
+        <div className="mt-3 grid grid-cols-2 gap-1"><div className="h-16 rounded-md border border-white/10 bg-gradient-to-b from-slate-700 to-black" /><div className="h-16 rounded-md border border-white/10 bg-gradient-to-b from-slate-700 to-black" /></div>
+        <div className="mt-2 grid grid-cols-2 gap-1 text-[7px]"><span className="rounded bg-black px-1 py-1 text-center"> App Store</span><span className="rounded bg-black px-1 py-1 text-center">▶ Play</span></div>
       </div>
 
-      <div className="flex gap-2 px-4 pb-5">
-        <button className="flex-1 rounded-lg border border-white/10 py-2 text-sm text-gray-300">
-          Light
-        </button>
-        <button className="flex-1 rounded-lg bg-blue-600 py-2 text-sm">
-          Dark
-        </button>
-      </div>
+      <div className="px-3 pb-4"><div className="flex rounded-lg bg-[#101820] p-1 text-[11px]"><button className="flex-1 rounded-md py-2 text-slate-400">Light</button><button className="flex-1 rounded-md bg-blue-600 py-2 font-semibold text-white shadow">Dark</button></div></div>
+      <div className="border-t border-white/[0.06] px-4 py-4 text-[11px] leading-5 text-slate-400">© 2025 BitNova<br/>All rights reserved</div>
     </aside>
   );
 }
