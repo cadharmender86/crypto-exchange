@@ -14,7 +14,6 @@ const TRADING_FEE_PERCENT = 0.1;
 export default function EasyBuySell() {
   const { assets = [], ticker = [] } = useMarket();
   const { wallet } = useWallet();
-
   const coins = assets.length ? assets.slice(0, 6).map((c: any) => c.symbol) : defaultCoins;
   const [selectedCoin, setSelectedCoin] = useState("USDT");
   const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
@@ -23,7 +22,6 @@ export default function EasyBuySell() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-
   const selectedTicker: any = useMemo(() => ticker.find((item: any) => item.symbol === `${selectedCoin}INR` || item.symbol === `${selectedCoin}/INR`), [ticker, selectedCoin]);
   const price = Number(selectedTicker?.last_price || selectedTicker?.price || selectedTicker?.last || 0);
   const payAmount = Number(amount || 0);
@@ -34,42 +32,27 @@ export default function EasyBuySell() {
   const insufficientBalance = mode === "BUY" && totalPayable > availableINR;
 
   async function handleConfirmOrder() {
-    setSubmitting(true);
-    setMessage("");
-    try {
-      const response = await createOrder({
-        symbol: `${selectedCoin}/INR`,
-        side: mode,
-        amount: payAmount,
-        quote_currency: "INR",
-      });
-
-      window.dispatchEvent(new CustomEvent("order-created", { detail: response }));
-      setShowConfirm(false);
-      setAmount("");
-      setMessage("Order placed successfully");
-    } catch (error) {
-      setMessage("Order placement failed");
-    } finally {
-      setSubmitting(false);
-    }
+    setSubmitting(true); setMessage("");
+    try { const response = await createOrder({ symbol: `${selectedCoin}/INR`, side: mode, amount: payAmount, quote_currency: "INR" }); window.dispatchEvent(new CustomEvent("order-created", { detail: response })); setShowConfirm(false); setAmount(""); setMessage("Order placed successfully"); }
+    catch { setMessage("Order placement failed"); }
+    finally { setSubmitting(false); }
   }
 
   return (
-    <section className="rounded-2xl border border-gray-800 bg-[#111318] p-6">
-      <div className="mb-5 flex justify-between"><h2 className="text-lg font-semibold text-white">Easy Buy / Sell</h2><button className="text-blue-400" onClick={() => setShowCoinModal(true)}>More Coins</button></div>
-      <div className="mb-5 flex flex-wrap gap-3">{coins.map((coin) => <button key={coin} onClick={() => setSelectedCoin(coin)} className={`flex items-center gap-2 rounded-full px-4 py-2 ${selectedCoin === coin ? "bg-blue-600 text-white" : "bg-[#1b2028] text-gray-300"}`}><CoinIcon symbol={coin} size={22}/>{coin}</button>)}</div>
-      <div className="text-sm text-gray-400">Trading Pair: <span className="text-white">{selectedCoin}/INR</span></div>
-      <div className="mb-4 text-sm text-gray-400">Market Price: <span className="text-white">₹{price || "--"}</span></div>
-      <div className="grid grid-cols-2 rounded-xl bg-[#0b0e11] p-1 mb-4"><button onClick={() => setMode("BUY")} className="py-3">BUY</button><button onClick={() => setMode("SELL")} className="py-3">SELL</button></div>
-      <input value={amount} onChange={(e)=>setAmount(e.target.value)} className="w-full rounded-xl bg-[#0b0e11] p-4 text-white" placeholder="Enter amount" />
-      <div className="mt-3 text-white">Receive: {receiveAmount} {selectedCoin}</div>
-      {insufficientBalance && <p className="mt-3 text-red-400">Insufficient INR Balance</p>}
-      <button disabled={!amount || insufficientBalance || submitting} onClick={() => setShowConfirm(true)} className="mt-5 w-full rounded-xl bg-blue-600 py-3 text-white">Review {mode} {selectedCoin}</button>
+    <section className="h-full rounded-lg border border-white/[0.06] bg-[#10161d] p-4 text-white">
+      <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-bold">Easy Buy / Sell</h2></div>
+      <div className="mb-2 flex items-center gap-2 overflow-hidden">
+        {coins.slice(0, 4).map((coin) => <button key={coin} onClick={() => setSelectedCoin(coin)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold ${selectedCoin === coin ? "bg-white text-slate-900" : "bg-[#18202a] text-slate-300"}`}><CoinIcon symbol={coin} size={18}/>{coin}</button>)}
+        <button onClick={() => setShowCoinModal(true)} className="shrink-0 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1.5 text-[9px] font-semibold text-blue-400">More Coins</button>
+      </div>
+      <div className="grid grid-cols-2 rounded-md bg-[#17263a] p-0.5 text-[10px] font-bold"><button onClick={() => setMode("BUY")} className={`rounded py-1.5 ${mode === "BUY" ? "bg-emerald-500 text-white" : "text-slate-300"}`}>BUY</button><button onClick={() => setMode("SELL")} className={`rounded py-1.5 ${mode === "SELL" ? "bg-red-500 text-white" : "text-slate-300"}`}>SELL</button></div>
+      <div className="mt-2"><label className="text-[9px] text-slate-400">You Pay (INR)</label><div className="mt-1 flex items-center rounded-md border border-white/10 bg-[#0b1219] px-2"><input value={amount} onChange={(e) => setAmount(e.target.value)} className="h-8 min-w-0 flex-1 bg-transparent text-xs outline-none" placeholder="Enter amount"/><span className="text-[9px] font-bold">₹ INR</span></div></div>
+      <div className="mt-2"><label className="text-[9px] text-slate-400">You Receive ({selectedCoin})</label><div className="mt-1 flex h-8 items-center justify-between rounded-md border border-white/10 bg-[#0b1219] px-2 text-xs text-slate-400"><span>{receiveAmount}</span><span className="text-[9px] font-bold text-emerald-400">{selectedCoin}</span></div></div>
+      {insufficientBalance && <p className="mt-1 text-[9px] text-red-400">Insufficient INR Balance</p>}
+      <button disabled={!amount || insufficientBalance || submitting} onClick={() => setShowConfirm(true)} className="mt-3 w-full rounded-md bg-gradient-to-r from-blue-600 to-blue-500 py-2 text-[10px] font-bold disabled:opacity-40">{submitting ? "Submitting..." : `Continue ${mode} ${selectedCoin}`}</button>
+      {message && <p className="mt-1 text-center text-[9px] text-emerald-400">{message}</p>}
       <CoinSelectorModal open={showCoinModal} onClose={() => setShowCoinModal(false)} onSelect={setSelectedCoin}/>
-      <OrderConfirmationModal open={showConfirm} coin={selectedCoin} mode={mode} payAmount={payAmount} receiveAmount={receiveAmount} fee={fee} onCancel={()=>setShowConfirm(false)} onConfirm={handleConfirmOrder}/>
-      {submitting && <p className="mt-2 text-center text-gray-400">Submitting order...</p>}
-      {message && <p className="mt-2 text-center text-green-400">{message}</p>}
+      <OrderConfirmationModal open={showConfirm} coin={selectedCoin} mode={mode} payAmount={payAmount} receiveAmount={receiveAmount} fee={fee} onCancel={() => setShowConfirm(false)} onConfirm={handleConfirmOrder}/>
     </section>
   );
 }
