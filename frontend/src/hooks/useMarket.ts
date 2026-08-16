@@ -9,6 +9,8 @@ export function useMarket() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     async function loadMarket() {
       try {
         const [tickerData, assetData] = await Promise.all([
@@ -16,14 +18,25 @@ export function useMarket() {
           getMarketAssets(),
         ]);
 
+        if (!mounted) return;
         setTicker(tickerData || []);
         setAssets(assetData || []);
+      } catch (error) {
+        console.error("Unable to load market assets:", error);
+        if (mounted) {
+          setTicker([]);
+          setAssets([]);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
     loadMarket();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { ticker, assets, loading };
