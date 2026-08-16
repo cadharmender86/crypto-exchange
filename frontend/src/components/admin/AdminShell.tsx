@@ -58,17 +58,29 @@ const navGroups: NavGroup[] = [
   ] },
 ];
 
+const SECTION_STATE_KEY = "bitnova-admin-sidebar-sections";
+
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [session, setSession] = useState<AdminSession | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [search, setSearch] = useState("");
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (pathname === "/admin/login") { setCheckingAuth(false); return; }
     getAdminMe().then(setSession).catch(() => router.replace("/admin/login")).finally(() => setCheckingAuth(false));
   }, [pathname, router]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SECTION_STATE_KEY);
+      if (saved) setCollapsedSections(JSON.parse(saved));
+    } catch {
+      // Ignore malformed local storage and use the default expanded state.
+    }
+  }, []);
 
   const logout = () => { clearAdminSession(); router.replace("/admin/login"); };
   if (pathname === "/admin/login") return <>{children}</>;
@@ -81,6 +93,16 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const adminLabel = isSuperAdmin ? "Super Admin" : "Administrator";
   const isActive = (href: string) => href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
 
+  const toggleSection = (label: string) => {
+    setCollapsedSections((current) => {
+      const next = { ...current, [label]: !current[label] };
+      try { window.localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(next)); } catch { /* Ignore storage failures. */ }
+      return next;
+    });
+  };
+
+  const isGroupActive = (group: NavGroup) => group.items.some((item) => isActive(item.href));
+
   return (
     <div className="min-h-screen bg-[#020b1c] text-slate-100 lg:flex">
       <aside className="hidden h-screen w-[278px] shrink-0 border-r border-slate-800/80 bg-[#031027] lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -88,11 +110,30 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           <div className="text-[37px] font-black leading-none text-blue-600">B</div>
           <div className="text-[22px] font-bold tracking-tight text-slate-100">BitNova</div>
         </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
-          {visibleGroups.map((group) => <div key={group.label} className="mb-6 last:mb-2">
-            <div className="px-3 pb-2 text-[11px] font-medium tracking-wide text-slate-500">{group.label}</div>
-            <div className="space-y-1">{group.items.map((item) => <Link key={`${item.label}-${item.href}`} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${isActive(item.href) ? "bg-blue-600 text-white shadow-lg shadow-blue-950/30" : "text-slate-300 hover:bg-slate-800/50 hover:text-white"}`}><span className="grid w-5 place-items-center text-[16px] opacity-90">{item.icon}</span><span className="truncate">{item.label}</span></Link>)}</div>
-          </div>)}
+        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+          {visibleGroups.map((group) => {
+            const active = isGroupActive(group);
+            const collapsed = Boolean(collapsedSections[group.label]) && !active;
+            return (
+              <div key={group.label} className="mb-3 last:mb-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSection(group.label)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-semibold tracking-wide transition ${active ? "text-blue-300" : "text-slate-500 hover:bg-slate-800/40 hover:text-slate-300"}`}
+                  aria-expanded={!collapsed}
+                  aria-controls={`admin-nav-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                >
+                  <span>{group.label}</span>
+                  <span className={`text-[12px] transition-transform ${collapsed ? "-rotate-90" : "rotate-0"}`}>⌄</span>
+                </button>
+                {!collapsed && (
+                  <div id={`admin-nav-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="mt-1 space-y-1">
+                    {group.items.map((item) => <Link key={`${item.label}-${item.href}`} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${isActive(item.href) ? "bg-blue-600 text-white shadow-lg shadow-blue-950/30" : "text-slate-300 hover:bg-slate-800/50 hover:text-white"}`}><span className="grid w-5 place-items-center text-[16px] opacity-90">{item.icon}</span><span className="truncate">{item.label}</span></Link>)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
         <div className="shrink-0 border-t border-slate-800/80 p-4"><div className="flex items-center gap-3 px-1 py-2">
           <div className="relative"><div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-500 text-sm font-semibold text-white">{initials}</div><span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#031027] bg-emerald-400" /></div>
