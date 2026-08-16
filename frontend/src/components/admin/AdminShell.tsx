@@ -119,7 +119,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => toggleSection(group.label)}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-semibold tracking-wide transition ${active ? "text-blue-300" : "text-slate-500 hover:bg-slate-800/40 hover:text-slate-300"}`}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-bold tracking-wide transition ${active ? "text-blue-300" : "text-slate-500 hover:bg-slate-800/40 hover:text-slate-300"}`}
                   aria-expanded={!collapsed}
                   aria-controls={`admin-nav-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 >
