@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export default function DashboardHeader() {
@@ -26,7 +27,12 @@ export default function DashboardHeader() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#252a31] text-xs font-bold text-slate-200 ring-1 ring-white/10">DK</span>
               <span className="text-xs text-slate-400">⌄</span>
             </button>
-            {menuOpen && <div className="absolute right-0 top-10 w-36 rounded-lg border border-white/10 bg-[#11161d] p-2 text-xs shadow-2xl"><button className="w-full rounded px-3 py-2 text-left hover:bg-white/5">Profile</button><button className="w-full rounded px-3 py-2 text-left hover:bg-white/5">Logout</button></div>}
+            {menuOpen && (
+              <div className="absolute right-0 top-10 w-36 rounded-lg border border-white/10 bg-[#11161d] p-2 text-xs shadow-2xl">
+                <Link href="/profile" onClick={() => setMenuOpen(false)} className="block w-full rounded px-3 py-2 text-left hover:bg-white/5">Profile</Link>
+                <button className="w-full rounded px-3 py-2 text-left hover:bg-white/5">Logout</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
