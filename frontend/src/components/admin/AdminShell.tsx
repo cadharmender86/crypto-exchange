@@ -116,13 +116,13 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#020b1c] text-slate-100 lg:flex">
-      <aside className="hidden w-[278px] shrink-0 border-r border-slate-800/80 bg-[#031027] lg:flex lg:flex-col">
-        <div className="flex h-[72px] items-center gap-3 border-b border-slate-800/80 px-7">
+      <aside className="hidden h-screen w-[278px] shrink-0 border-r border-slate-800/80 bg-[#031027] lg:sticky lg:top-0 lg:flex lg:flex-col">
+        <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-slate-800/80 px-7">
           <div className="text-[37px] font-black leading-none text-blue-600">B</div>
           <div className="text-[22px] font-bold tracking-tight text-slate-100">BitNova</div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {visibleGroups.map((group) => (
             <div key={group.label} className="mb-6 last:mb-2">
               <div className="px-3 pb-2 text-[11px] font-medium tracking-wide text-slate-500">{group.label}</div>
@@ -142,7 +142,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="border-t border-slate-800/80 p-4">
+        <div className="shrink-0 border-t border-slate-800/80 p-4">
           <div className="flex items-center gap-3 px-1 py-2">
             <div className="relative">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-500 text-sm font-semibold text-white">{initials}</div>
