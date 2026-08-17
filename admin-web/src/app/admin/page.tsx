@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { adminFetch } from "@/lib/adminApi";
 
@@ -72,17 +72,43 @@ export default function AdminDashboard() {
   const [deposits, setDeposits] = useState<TransactionRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<TransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  useEffect(() => { (async () => { try {
-    const [dr, dep, wd] = await Promise.all([adminFetch("/api/v1/admin/dashboard"), adminFetch("/api/v1/admin/deposits?page=1&page_size=5"), adminFetch("/api/v1/admin/withdrawals?page=1&page_size=5")]);
-    const d = await dr.json() as Dashboard & { detail?: string }; const deps = await dep.json() as TransactionList & { detail?: string }; const wds = await wd.json() as TransactionList & { detail?: string };
-    if (!dr.ok) throw new Error(d.detail || "Unable to load dashboard"); if (!dep.ok) throw new Error(deps.detail || "Unable to load deposits"); if (!wd.ok) throw new Error(wds.detail || "Unable to load withdrawals");
-    setDashboard(d); setDeposits(deps.items || []); setWithdrawals(wds.items || []);
-  } catch (e) { setError(e instanceof Error ? e.message : "Unable to load dashboard"); } finally { setLoading(false); } })(); }, []);
+  const loadDashboard = useCallback(async (manualRefresh = false) => {
+    if (manualRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError("");
+
+    try {
+      const [dr, dep, wd] = await Promise.all([
+        adminFetch("/api/v1/admin/dashboard"),
+        adminFetch("/api/v1/admin/deposits?page=1&page_size=5"),
+        adminFetch("/api/v1/admin/withdrawals?page=1&page_size=5"),
+      ]);
+      const d = await dr.json() as Dashboard & { detail?: string };
+      const deps = await dep.json() as TransactionList & { detail?: string };
+      const wds = await wd.json() as TransactionList & { detail?: string };
+      if (!dr.ok) throw new Error(d.detail || "Unable to load dashboard");
+      if (!dep.ok) throw new Error(deps.detail || "Unable to load deposits");
+      if (!wd.ok) throw new Error(wds.detail || "Unable to load withdrawals");
+      setDashboard(d);
+      setDeposits(deps.items || []);
+      setWithdrawals(wds.items || []);
+      setLastUpdated(new Date());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load dashboard");
+    } finally {
+      if (manualRefresh) setRefreshing(false);
+      else setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadDashboard(); }, [loadDashboard]);
 
   return <main className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 lg:px-7">
-    <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-400">Operations</p><h1 className="mt-1 text-xl font-semibold text-white">Dashboard</h1><p className="mt-1 text-[10px] text-slate-500">Welcome back, Super Admin</p></div><div className="rounded-md border border-slate-800 bg-[#0d1523] px-3 py-2 text-[10px] text-slate-300">Today <span className="text-slate-500">•</span> Live data</div></div>
+    <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-400">Operations</p><h1 className="mt-1 text-xl font-semibold text-white">Dashboard</h1><p className="mt-1 text-[10px] text-slate-500">Welcome back, Super Admin</p></div><div className="flex items-center gap-2"><div className="hidden rounded-md border border-slate-800 bg-[#0d1523] px-3 py-2 text-[10px] text-slate-300 sm:block">Today <span className="text-slate-500">•</span> Live data{lastUpdated && <span className="ml-2 text-slate-500">Updated {lastUpdated.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}</div><button type="button" onClick={() => void loadDashboard(true)} disabled={loading || refreshing} className="inline-flex items-center gap-2 rounded-md border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-[10px] font-semibold text-indigo-300 transition hover:border-indigo-400/60 hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-50"><span className={refreshing ? "animate-spin" : ""}>↻</span>{refreshing ? "Refreshing..." : "Refresh"}</button></div></div>
     {error && <div className="mb-4 rounded-lg border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-xs text-rose-300">{error}</div>}
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Kpi label="Total Users" value={loading ? "…" : number(dashboard?.total_users)} note="registered accounts" icon="♙" tone="bg-indigo-500/15 text-indigo-400" footer="Count:" />
@@ -95,6 +121,6 @@ export default function AdminDashboard() {
       <Kpi label="Ledger Balance" value="—" note="INR aggregate pending ledger valuation API" icon="◎" tone="bg-amber-500/15 text-amber-400" footer={`Assets:${number(dashboard?.active_assets)}`} />
     </div>
     <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)_minmax(260px,1fr)]"><TradingVolume /><RiskAlerts d={dashboard} /><SystemHealth /></div>
-    <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><Activity title="Recent Deposits" href="/admin/deposits" rows={deposits} loading={loading} type="deposits" /><Activity title="Recent Withdrawals" href="/admin/withdrawals" rows={withdrawals} loading={loading} type="withdrawals" /></div>
+    <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><Activity title="Recent Deposits" href="/admin/deposits" rows={deposits} loading={loading || refreshing} type="deposits" /><Activity title="Recent Withdrawals" href="/admin/withdrawals" rows={withdrawals} loading={loading || refreshing} type="withdrawals" /></div>
   </main>;
 }
