@@ -3,6 +3,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
+class AdminCreateRequest(BaseModel):
+    email: EmailStr
+    full_name: str = Field(min_length=2, max_length=255)
+    password: str = Field(min_length=12, max_length=128)
+    role_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+
+    
 class AdminPermissionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

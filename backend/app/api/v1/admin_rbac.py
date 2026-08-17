@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
-from app.api.v1.admin_auth import require_permission
+from app.api.v1.admin_auth import get_current_admin, require_permission
 from app.models.admin import (
     AdminPermission,
     AdminRole,
@@ -21,12 +21,42 @@ from app.schemas.admin_rbac import (
     AdminRoleResponse,
 )
 
+
 router = APIRouter(prefix="/admin/rbac", tags=["Admin RBAC"])
 
+async def require_super_admin(
+    admin: AdminUser,
+    db: AsyncSession,
+) -> AdminUser:
+    result = await db.execute(
+        select(AdminRole)
+        .join(admin_user_roles, admin_user_roles.c.role_id == AdminRole.id)
+        .where(
+            admin_user_roles.c.admin_user_id == admin.id,
+            AdminRole.name == "SUPER_ADMIN",
+            AdminRole.is_active.is_(True),
+        )
+    )
+
+    role = result.scalar_one_or_none()
+
+    if role is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only SUPER_ADMIN can manage administrator accounts",
+        )
+
+    return admin
+
+async def require_super_admin_dependency(
+    admin: AdminUser = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AdminUser:
+    return await require_super_admin(admin, db)
 
 @router.get("/roles", response_model=list[AdminRoleResponse])
 async def list_roles(
-    _: AdminUser = Depends(require_permission("ADMIN_MANAGE")),
+    _: AdminUser = Depends(require_super_admin_dependency),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(AdminRole).order_by(AdminRole.name))
