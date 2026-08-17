@@ -80,7 +80,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const initials = (session.full_name || session.email || "A").charAt(0).toUpperCase();
   const adminLabel = isSuperAdmin ? "Super Admin" : "Administrator";
   const isActive = (href: string) => href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
-  const toggleSection = (label: string) => setCollapsedSections((current) => { const next = { ...current, [label]: !current[label] }; try { window.localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(next)); } catch {} return next; });
+  const toggleSection = (label: string) => setCollapsedSections(() => {
+    // Accordion behavior: opening one section closes every other section.
+    const next = Object.fromEntries(navGroups.map((group) => [group.label, group.label !== label]));
+    try { window.localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(next)); } catch {}
+    return next;
+  });
   const isGroupActive = (group: NavGroup) => group.items.some((item) => isActive(item.href));
 
   return (
