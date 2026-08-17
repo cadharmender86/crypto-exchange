@@ -18,3 +18,4 @@ python-jose[cryptography]>=3.3,<4.0
 passlib[bcrypt]>=1.7.4,<2.0
 python-multipart>=0.0.20,<1.0
 bcrypt==4.3.0
+eth-account==0.13.7

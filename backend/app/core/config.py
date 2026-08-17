@@ -41,8 +41,10 @@ class Settings(BaseSettings):
     bitcoin_network: str = "Testnet"
 
     ethereum_deposit_confirmations: int = 12
+    ethereum_withdrawal_confirmations: int = 12
 
     alchemy_api_key: str
+    ethereum_withdrawal_private_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
