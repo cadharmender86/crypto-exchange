@@ -21,6 +21,56 @@ class EthereumDepositWorker:
         self._last_block: int | None = None
         self._processed_transactions: Set[str] = set()
 
+    async def process_pending_deposits(self) -> None:
+        """Advance pending deposits as blockchain confirmations increase."""
+
+        from sqlalchemy import select
+
+        from app.core.config import settings
+        from app.models.deposit import Deposit
+        from app.services.deposit_service import DepositService
+
+        provider = self.monitor.provider
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Deposit)
+                .where(
+                    Deposit.network == provider.network,
+                    Deposit.status == DepositService.PENDING,
+                )
+            )
+
+            deposits = result.scalars().all()
+
+            for deposit in deposits:
+                confirmations = await provider.get_confirmations(
+                    deposit.blockchain_tx_hash
+                )
+
+                if confirmations is None:
+                    continue
+
+                if confirmations < deposit.confirmations:
+                    continue
+
+                deposit = await DepositService.confirm_deposit(
+                    db,
+                    deposit_id=deposit.id,
+                    confirmations=confirmations,
+                    confirmation_threshold=(
+                        settings.ethereum_deposit_confirmations
+                    ),
+                )
+
+                if deposit.status == DepositService.CONFIRMED:
+                    await DepositService.credit_confirmed_deposit(
+                        db,
+                        deposit_id=deposit.id,
+                    )
+
+            await db.commit()
+
     async def run(self) -> None:
         """Continuously scan new blocks."""
 
@@ -48,6 +98,7 @@ class EthereumDepositWorker:
                         self._last_block
                     )
 
+                await self.process_pending_deposit
                 await asyncio.sleep(
                     self.poll_interval
                 )

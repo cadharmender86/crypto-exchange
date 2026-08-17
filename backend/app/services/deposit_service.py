@@ -42,6 +42,7 @@ class DepositService:
         blockchain_tx_hash: str,
         amount: Decimal,
         confirmations: int = 0,
+        confirmation_threshold: int = 1,
     ) -> Deposit:
         """Create or return a deposit observed on the blockchain.
 
@@ -50,9 +51,15 @@ class DepositService:
 
         amount = BalanceService._amount(amount)
 
+
         if confirmations < 0:
             raise ValueError(
                 "Confirmations cannot be negative"
+            )
+
+        if confirmation_threshold <= 0:
+            raise ValueError(
+                "Confirmation threshold must be greater than zero"
             )
 
         network = network.strip().upper()
@@ -169,7 +176,7 @@ class DepositService:
             confirmations=confirmations,
             status=(
                 DepositService.CONFIRMED
-                if confirmations > 0
+                if confirmations >= confirmation_threshold
                 else DepositService.PENDING
             ),
         )
@@ -186,7 +193,7 @@ class DepositService:
                     Deposit.blockchain_tx_hash == blockchain_tx_hash,
                 )
             )
-        
+
 
             existing = existing_result.scalar_one_or_none()
 
@@ -211,6 +218,7 @@ class DepositService:
         *,
         deposit_id: UUID,
         confirmations: int,
+        confirmation_threshold: int = 1,
     ) -> Deposit:
         """Update blockchain confirmations.
 
@@ -249,7 +257,7 @@ class DepositService:
 
         deposit.confirmations = confirmations
 
-        if confirmations > 0:
+        if confirmations >= confirmation_threshold:
             deposit.status = DepositService.CONFIRMED
         else:
             deposit.status = DepositService.PENDING

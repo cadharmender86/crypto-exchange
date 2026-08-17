@@ -690,6 +690,80 @@ async def test_insufficient_treasury_does_not_credit_customer(db):
 
     print("  PASS")
 
+async def test_confirmation_threshold_boundary(db):
+    print("\n[7] Deposit confirmation threshold boundary")
+
+    user_result = await db.execute(
+        select(User).where(
+            User.email == "user1@example.com"
+        )
+    )
+    user = user_result.scalar_one()
+
+    asset_result = await db.execute(
+        select(Asset).where(
+            Asset.symbol == "USDT"
+        )
+    )
+    asset = asset_result.scalar_one()
+
+    wallet_result = await db.execute(
+        select(Wallet).where(
+            Wallet.user_id == user.id
+        )
+    )
+    wallet = wallet_result.scalars().first()
+
+    address_result = await db.execute(
+        select(WalletAddress).where(
+            WalletAddress.wallet_id == wallet.id,
+            WalletAddress.asset_id == asset.id,
+            WalletAddress.status == "ACTIVE",
+        )
+    )
+    wallet_address = address_result.scalars().first()
+
+    threshold = settings.ethereum_deposit_confirmations
+
+    below = await DepositService.create_pending_deposit(
+        db,
+        user_id=user.id,
+        wallet_address_id=wallet_address.id,
+        asset_id=asset.id,
+        network=wallet_address.network,
+        blockchain_tx_hash=f"phase45-below-{uuid.uuid4().hex}",
+        amount=Decimal("1"),
+        confirmations=threshold - 1,
+        confirmation_threshold=threshold,
+    )
+
+    if below.status != DepositService.PENDING:
+        raise AssertionError(
+            f"Expected PENDING below threshold, got {below.status}"
+        )
+
+    at_threshold = await DepositService.create_pending_deposit(
+        db,
+        user_id=user.id,
+        wallet_address_id=wallet_address.id,
+        asset_id=asset.id,
+        network=wallet_address.network,
+        blockchain_tx_hash=f"phase45-threshold-{uuid.uuid4().hex}",
+        amount=Decimal("1"),
+        confirmations=threshold,
+        confirmation_threshold=threshold,
+    )
+
+    if at_threshold.status != DepositService.CONFIRMED:
+        raise AssertionError(
+            f"Expected CONFIRMED at threshold, "
+            f"got {at_threshold.status}"
+        )
+
+    await db.rollback()
+
+    print("  PASS")
+
 async def main():
     print("=" * 70)
     print("BITNOVA PHASE 4.3 DEPOSIT SERVICE TEST")
@@ -711,7 +785,10 @@ async def main():
         await test_confirmed_deposit_is_credited_exactly_once(db)
 
     async with SessionLocal() as db:
-        await test_insufficient_treasury_does_not_credit_customer(db)        
+        await test_insufficient_treasury_does_not_credit_customer(db)
+
+    async with SessionLocal() as db:
+        await test_confirmation_threshold_boundary(db)
 
     await engine.dispose()
 

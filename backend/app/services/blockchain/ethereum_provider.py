@@ -14,10 +14,11 @@ class EthereumProvider:
     """Minimal Ethereum JSON-RPC provider for testnet monitoring."""
 
     def __init__(self) -> None:
-        self.network = settings.ethereum_network
+        self.network = settings.ethereum_network.upper()
+        self.rpc_network = settings.ethereum_network.lower()
         self.api_key = settings.alchemy_api_key
         self.rpc_url = (
-            f"https://eth-{self.network}.g.alchemy.com/v2/{self.api_key}"
+            f"https://eth-{self.rpc_network}.g.alchemy.com/v2/{self.api_key}"
         )
 
     async def _rpc(

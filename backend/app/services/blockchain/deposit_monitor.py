@@ -5,6 +5,7 @@ from typing import Any
 # from backend.app.schemas import wallet
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import settings
 
 from app.models.asset import Asset
 from app.models.wallet import Wallet
@@ -110,6 +111,7 @@ class EthereumDepositMonitor:
 
             confirmations = (
                 await self.provider.get_confirmations(
+
                     tx_hash
                 )
             )
@@ -138,6 +140,7 @@ class EthereumDepositMonitor:
                     blockchain_tx_hash=tx_hash,
                     amount=amount,
                     confirmations=confirmations,
+                    confirmation_threshold=settings.ethereum_deposit_confirmations,
                 )
             )
 
