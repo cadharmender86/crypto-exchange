@@ -202,3 +202,50 @@ class WithdrawalService:
         await db.flush()
 
         return withdrawal
+
+    @staticmethod
+    async def set_blockchain_tx_hash(
+        db: AsyncSession,
+        *,
+        withdrawal_id: UUID,
+        blockchain_tx_hash: str,
+    ) -> Withdrawal:
+        """Attach the blockchain transaction hash to a withdrawal."""
+
+        blockchain_tx_hash = blockchain_tx_hash.strip()
+
+        if not blockchain_tx_hash:
+            raise ValueError(
+                "Blockchain transaction hash is required"
+            )
+
+        result = await db.execute(
+            select(Withdrawal)
+            .where(Withdrawal.id == withdrawal_id)
+            .with_for_update()
+        )
+
+        withdrawal = result.scalar_one_or_none()
+
+        if withdrawal is None:
+            raise ValueError("Withdrawal not found")
+
+        if withdrawal.status == WithdrawalService.FAILED:
+            raise ValueError(
+                "Cannot track a failed withdrawal"
+            )
+
+        if withdrawal.blockchain_tx_hash is not None:
+            if withdrawal.blockchain_tx_hash != blockchain_tx_hash:
+                raise ValueError(
+                    "Withdrawal already has a different "
+                    "blockchain transaction hash"
+                )
+
+            return withdrawal
+
+        withdrawal.blockchain_tx_hash = blockchain_tx_hash
+
+        await db.flush()
+
+        return withdrawal
