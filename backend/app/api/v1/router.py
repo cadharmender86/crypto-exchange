@@ -11,6 +11,7 @@ from app.api.v1.users import router as users_router
 from app.api.v1.wallets import router as wallets_router
 from app.api.v1.wallet_addresses import router as wallet_addresses_router
 from app.api.v1.deposits import router as deposits_router
+from app.api.v1.withdrawals import router as withdrawals_router
 
 
 api_router = APIRouter()
@@ -18,6 +19,7 @@ api_router = APIRouter()
 api_router.include_router(auth_router)
 api_router.include_router(accounts_router)
 api_router.include_router(deposits_router)
+api_router.include_router(withdrawals_router)
 api_router.include_router(ledger_router)
 api_router.include_router(transfers_router)
 api_router.include_router(assets_router)
