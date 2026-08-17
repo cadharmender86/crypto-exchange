@@ -60,6 +60,12 @@ class Withdrawal(Base):
         index=True,
     )
 
+    blockchain_tx_hash: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+    )
+
     destination_address: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
