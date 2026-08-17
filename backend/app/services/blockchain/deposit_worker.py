@@ -55,10 +55,11 @@ class EthereumDepositWorker:
             except asyncio.CancelledError:
                 break
 
-            except Exception as exc:
-                print(
-                    f"Deposit worker error: {exc}"
-                )
+            except Exception:
+                import traceback
+
+                print("Deposit worker error:")
+                traceback.print_exc()
 
                 await asyncio.sleep(
                     self.poll_interval
@@ -68,45 +69,37 @@ class EthereumDepositWorker:
         self,
         block_number: int,
     ) -> None:
-        """Process all transactions in one block."""
+        """Process ERC-20 Transfer events in one block."""
 
         provider = self.monitor.provider
 
-        block = await provider.get_block(
-            block_number,
-            full_transactions=True,
+        logs = await provider.get_erc20_transfer_logs(
+            from_block=block_number,
+            to_block=block_number,
         )
 
-        if not block:
+        if not logs:
             return
 
-        transactions = block.get(
-            "transactions",
-            [],
-        )
+        processed_transactions: set[str] = set()
 
-        for transaction in transactions:
-            if not isinstance(transaction, dict):
-                continue
-
-            tx_hash = transaction.get("hash")
+        for log in logs:
+            tx_hash = log.get("transactionHash")
 
             if not tx_hash:
                 continue
 
             tx_hash_lower = tx_hash.lower()
 
-            if tx_hash_lower in (
-                self._processed_transactions
-            ):
+            if tx_hash_lower in processed_transactions:
                 continue
 
+            processed_transactions.add(tx_hash_lower)
+
             async with AsyncSessionLocal() as db:
-                deposits = (
-                    await self.monitor.process_transaction(
-                        db,
-                        tx_hash,
-                    )
+                deposits = await self.monitor.process_transaction(
+                    db,
+                    tx_hash,
                 )
 
                 if deposits:
@@ -117,10 +110,6 @@ class EthereumDepositWorker:
                         f"{tx_hash}: "
                         f"{len(deposits)} deposit(s)"
                     )
-
-            self._processed_transactions.add(
-                tx_hash_lower
-            )
 
     def stop(self) -> None:
         """Stop the worker loop."""

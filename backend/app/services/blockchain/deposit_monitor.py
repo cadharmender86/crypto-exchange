@@ -141,6 +141,13 @@ class EthereumDepositMonitor:
                 )
             )
 
+            if deposit.status == DepositService.CONFIRMED:
+                deposit = (await DepositService.credit_confirmed_deposit(
+                    db,
+                    deposit_id=deposit.id,
+                )
+            )
+
             created_deposits.append(deposit)
 
         return created_deposits

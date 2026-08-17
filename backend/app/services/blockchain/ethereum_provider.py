@@ -1,5 +1,6 @@
 # from pydoc_data.topics import topics
 #from curses import raw
+import asyncio
 from typing import Any
 #from unittest import result
 
@@ -31,22 +32,49 @@ class EthereumProvider:
             "params": params or [],
         }
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                self.rpc_url,
-                json=payload,
-            )
+        last_error = None
 
-        response.raise_for_status()
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=httpx.Timeout(
+                        connect=20.0,
+                        read=30.0,
+                        write=20.0,
+                        pool=20.0,
+                    )
+                ) as client:
+                    response = await client.post(
+                        self.rpc_url,
+                        json=payload,
+                    )
 
-        data = response.json()
+                response.raise_for_status()
 
-        if "error" in data:
-            raise RuntimeError(
-                f"Ethereum RPC error: {data['error']}"
-            )
+                data = response.json()
 
-        return data["result"]
+                if "error" in data:
+                    raise RuntimeError(
+                        f"Ethereum RPC error: {data['error']}"
+                    )
+
+                return data["result"]
+
+            except (
+                httpx.ConnectTimeout,
+                httpx.ReadTimeout,
+                httpx.ConnectError,
+                httpx.ReadError,
+            ) as exc:
+                last_error = exc
+
+                if attempt < 2:
+                    await asyncio.sleep(1 + attempt)
+
+        raise RuntimeError(
+            f"Ethereum RPC request failed after 3 attempts: "
+            f"{method}"
+        ) from last_error
 
     async def get_block_number(self) -> int:
         """Return the latest Ethereum block number."""
@@ -56,9 +84,8 @@ class EthereumProvider:
     async def get_block(
         self,
         block_number: int,
-        *,
-        full_transactions: bool = True,
-    ) -> dict[str, Any]:
+        full_transactions: bool = False,
+    ) -> dict[str, Any] | None:
         """Return an Ethereum block by number."""
 
         return await self._rpc(
@@ -68,6 +95,67 @@ class EthereumProvider:
                 full_transactions,
             ],
         )
+    async def get_logs(
+        self,
+        *,
+        from_block: int,
+        to_block: int,
+        address: str | None = None,
+        topics: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return Ethereum logs for a block range."""
+
+        filter_params: dict[str, Any] = {
+        "fromBlock": hex(from_block),
+        "toBlock": hex(to_block),
+        }
+
+        if address:
+            filter_params["address"] = address
+
+        if topics:
+            filter_params["topics"] = topics
+
+        return await self._rpc(
+            "eth_getLogs",
+            [filter_params],
+        )
+
+    async def get_erc20_transfer_logs(
+        self,
+        *,
+        from_block: int,
+        to_block: int,
+    ) -> list[dict[str, Any]]:
+        """Return ERC-20 Transfer logs for a block range."""
+
+        transfer_topic = (
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4"
+            "a11628f55a4df523b3ef"
+        )
+
+        logs = await self.get_logs(
+            from_block=from_block,
+            to_block=to_block,
+            topics=[transfer_topic],
+        )
+
+        return logs
+    # async def get_block(
+    #     self,
+    #     block_number: int,
+    #     *,
+    #     full_transactions: bool = True,
+    # ) -> dict[str, Any]:
+    #     """Return an Ethereum block by number."""
+
+    #     return await self._rpc(
+    #         "eth_getBlockByNumber",
+    #         [
+    #             hex(block_number),
+    #             full_transactions,
+    #         ],
+    #     )
     async def get_transaction(self, tx_hash: str) -> dict[str, Any] | None:
         """Return transaction data by hash."""
         return await self._rpc(
