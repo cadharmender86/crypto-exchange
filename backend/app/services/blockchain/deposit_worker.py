@@ -98,7 +98,7 @@ class EthereumDepositWorker:
                         self._last_block
                     )
 
-                await self.process_pending_deposit
+                await self.process_pending_deposits
                 await asyncio.sleep(
                     self.poll_interval
                 )
