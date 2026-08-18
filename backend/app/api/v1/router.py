@@ -19,6 +19,8 @@ from app.api.v1.admin_withdrawals import router as admin_withdrawals_router
 from app.api.v1.admin_kyc import router as admin_kyc_router
 from app.api.v1.kyc import router as kyc_router
 from app.api.v1.withdrawals import router as withdrawals_router
+from app.api.v1.orders import router as orders_router
+# from app.api.v1.trades import router as trades_router
 
 
 api_router = APIRouter()
@@ -42,3 +44,5 @@ api_router.include_router(users_router)
 api_router.include_router(wallets_router)
 api_router.include_router(wallet_addresses_router)
 api_router.include_router(withdrawals_router)
+api_router.include_router(orders_router)
+# api_router.include_router(trades_router)
