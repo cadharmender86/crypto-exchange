@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limiter import login_rate_limiter
 from app.api.dependencies import get_db
 from app.core.config import settings
+from app.services.account_service import AccountService
 from app.models.user import User
 from app.schemas.auth import (
     RefreshTokenRequest,
@@ -153,6 +154,10 @@ async def register(
     )
 
     db.add(user)
+    await db.flush()
+
+    await AccountService.create_customer_accounts(
+        db, user.id)
 
     try:
         await db.commit()

@@ -119,3 +119,21 @@ class BalanceService:
         account.locked_balance = locked - amount
         account.available_balance = available + amount
         BalanceService._validate_account(account)
+
+    @staticmethod
+    async def consume_locked(
+        account: Account,
+        amount: Decimal,
+    ) -> None:
+        """Remove funds that were previously reserved in locked balance."""
+        amount = BalanceService._amount(amount)
+        BalanceService._validate_account(account)
+
+        locked = Decimal(str(account.locked_balance))
+
+        if locked < amount:
+            raise ValueError("Insufficient locked balance")
+
+        account.locked_balance = locked - amount
+
+        BalanceService._validate_account(account)

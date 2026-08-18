@@ -30,9 +30,6 @@ api_router.include_router(internal_router)
 api_router.include_router(users_router)
 api_router.include_router(wallets_router)
 api_router.include_router(wallet_addresses_router)
-<<<<<<< HEAD
-=======
 api_router.include_router(withdrawals_router)
 api_router.include_router(orders_router)
 # api_router.include_router(trades_router)
->>>>>>> 613644b (feat(trading): add order matching and settlement)
