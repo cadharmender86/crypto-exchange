@@ -12,6 +12,8 @@ from app.api.v1.wallets import router as wallets_router
 from app.api.v1.wallet_addresses import router as wallet_addresses_router
 from app.api.v1.deposits import router as deposits_router
 from app.api.v1.withdrawals import router as withdrawals_router
+from app.api.v1.orders import router as orders_router
+# from app.api.v1.trades import router as trades_router
 
 
 api_router = APIRouter()
@@ -28,3 +30,9 @@ api_router.include_router(internal_router)
 api_router.include_router(users_router)
 api_router.include_router(wallets_router)
 api_router.include_router(wallet_addresses_router)
+<<<<<<< HEAD
+=======
+api_router.include_router(withdrawals_router)
+api_router.include_router(orders_router)
+# api_router.include_router(trades_router)
+>>>>>>> 613644b (feat(trading): add order matching and settlement)
