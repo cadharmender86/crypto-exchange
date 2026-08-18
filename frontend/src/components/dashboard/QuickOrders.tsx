@@ -4,65 +4,23 @@ import { useEffect, useState } from "react";
 import { getOpenOrders } from "@/services/order.service";
 
 const fallbackOrders = [
-  { pair: "BTC/INR", side: "BUY", amount: "₹2,50,000", status: "Open" },
-  { pair: "ETH/INR", side: "SELL", amount: "₹1,80,000", status: "Open" },
-  { pair: "USDT/INR", side: "BUY", amount: "₹50,000", status: "Filled" },
+  { pair: "BTC/INR", side: "BUY", amount: "₹2,50,000", status: "Open", note: "Add funds to your account" },
+  { pair: "ETH/INR", side: "SELL", amount: "₹1,80,000", status: "Open", note: "Sell ETH funds to bank" },
+  { pair: "USDT/INR", side: "BUY", amount: "₹50,000", status: "Filled", note: "Transfer to another wallet" },
+  { pair: "SOL/INR", side: "BUY", amount: "₹30,000", status: "Filled", note: "Completed order" },
 ];
 
 export default function QuickOrders() {
   const [orders, setOrders] = useState<any[]>(fallbackOrders);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    async function loadOrders() {
-      try {
-        setLoading(true);
-        const response: any = await getOpenOrders();
-        if (Array.isArray(response) && response.length) {
-          setOrders(response);
-        }
-      } catch {
-        setOrders(fallbackOrders);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadOrders();
-  }, []);
+  async function loadOrders() { try { const data: any = await getOpenOrders(); if (Array.isArray(data) && data.length) setOrders(data); } catch { setOrders(fallbackOrders); } }
+  useEffect(() => { loadOrders(); const refresh = () => loadOrders(); window.addEventListener("order-created", refresh); return () => window.removeEventListener("order-created", refresh); }, []);
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#111318] p-5 text-white">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="font-semibold">Quick Orders</h2>
-        <button className="text-sm text-blue-400">View All</button>
+    <section className="h-full rounded-lg border border-white/[0.06] bg-[#10161d] p-4 text-white">
+      <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-bold">Quick Orders</h2><button className="text-xs font-semibold text-blue-400">View All</button></div>
+      <div className="divide-y divide-white/[0.06]">
+        {orders.slice(0, 4).map((order, index) => <div key={index} className="flex items-center gap-2 py-2.5 first:pt-1"><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${order.side === "BUY" ? "bg-[#172238] text-slate-200" : "bg-indigo-500/30 text-indigo-200"} text-xs font-bold`}>{(order.pair || order.symbol || "?")[0]}</span><div className="min-w-0 flex-1"><p className="text-[10px] font-bold">{order.side} {order.pair || order.symbol}</p><p className="truncate text-[8px] text-slate-500">{order.note || "Order details"}</p></div><div className="text-right"><p className="text-[10px] font-semibold">{order.amount}</p><p className={`text-[9px] font-bold ${order.status === "Filled" ? "text-emerald-400" : "text-emerald-400"}`}>{order.status}</p></div></div>)}
       </div>
-
-      {loading ? (
-        <p className="text-sm text-gray-400">Loading orders...</p>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order, index) => (
-            <div key={order.id || index} className="rounded-xl bg-black/20 p-3">
-              <div className="flex justify-between">
-                <div>
-                  <p className="font-medium">{order.pair || order.symbol}</p>
-                  <span className={order.side === "BUY" ? "text-green-400 text-xs" : "text-red-400 text-xs"}>
-                    {order.side}
-                  </span>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-sm">{order.amount || order.total_amount}</p>
-                  <span className="text-blue-400 text-xs">
-                    {order.status || "OPEN"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
