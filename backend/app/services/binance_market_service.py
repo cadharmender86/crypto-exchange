@@ -1,0 +1,115 @@
+import asyncio
+import json
+import logging
+from collections.abc import AsyncIterator
+from typing import Any
+
+import websockets
+from websockets.exceptions import ConnectionClosed
+
+logger = logging.getLogger(__name__)
+
+BINANCE_WS_URL = "wss://stream.binance.com:9443/stream"
+DEFAULT_SYMBOLS = ("btcusdt", "ethusdt", "solusdt")
+
+
+class BinanceMarketService:
+    """Development/test market feed backed by Binance spot ticker streams."""
+
+    def __init__(self, symbols: tuple[str, ...] = DEFAULT_SYMBOLS) -> None:
+        self.symbols = tuple(symbol.lower() for symbol in symbols if symbol)
+        self._latest: dict[str, dict[str, Any]] = {}
+        self._subscribers: set[asyncio.Queue[dict[str, Any]]] = set()
+        self._task: asyncio.Task[None] | None = None
+        self._stop = asyncio.Event()
+
+    async def start(self) -> None:
+        if self._task and not self._task.done():
+            return
+        self._stop.clear()
+        self._task = asyncio.create_task(self._run(), name="binance-market-feed")
+
+    async def stop(self) -> None:
+        self._stop.set()
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
+
+    def snapshot(self) -> list[dict[str, Any]]:
+        return list(self._latest.values())
+
+    async def subscribe(self) -> AsyncIterator[dict[str, Any]]:
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=20)
+        self._subscribers.add(queue)
+        try:
+            for item in self.snapshot():
+                yield item
+            while not self._stop.is_set():
+                yield await queue.get()
+        finally:
+            self._subscribers.discard(queue)
+
+    async def _run(self) -> None:
+        streams = "/".join(f"{symbol}@ticker" for symbol in self.symbols)
+        url = f"{BINANCE_WS_URL}?streams={streams}"
+
+        while not self._stop.is_set():
+            try:
+                logger.info("Connecting to Binance market feed")
+                async with websockets.connect(
+                    url,
+                    ping_interval=20,
+                    ping_timeout=20,
+                    close_timeout=5,
+                ) as websocket:
+                    logger.info("Connected to Binance market feed")
+                    async for raw_message in websocket:
+                        if self._stop.is_set():
+                            break
+                        await self._handle_message(raw_message)
+            except (ConnectionClosed, OSError, asyncio.TimeoutError) as exc:
+                logger.warning("Binance market feed disconnected: %s", exc)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Unexpected Binance market feed error")
+
+            if not self._stop.is_set():
+                await asyncio.sleep(3)
+
+    async def _handle_message(self, raw_message: str | bytes) -> None:
+        message = json.loads(raw_message)
+        data = message.get("data", message)
+        symbol = str(data.get("s", "")).upper()
+        if not symbol:
+            return
+
+        item = {
+            "symbol": symbol,
+            "price": float(data.get("c", 0)),
+            "last_price": float(data.get("c", 0)),
+            "change_24h": float(data.get("P", 0)),
+            "high_24h": float(data.get("h", 0)),
+            "low_24h": float(data.get("l", 0)),
+            "volume_24h": float(data.get("v", 0)),
+            "source": "BINANCE",
+        }
+        self._latest[symbol] = item
+
+        for queue in tuple(self._subscribers):
+            if queue.full():
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            try:
+                queue.put_nowait(item)
+            except asyncio.QueueFull:
+                pass
+
+
+binance_market_service = BinanceMarketService()
