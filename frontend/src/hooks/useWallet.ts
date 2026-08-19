@@ -1,15 +1,12 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import {
   AccountBalance,
   getAccountBalances,
-  getWalletBalance,
-  WalletBalance,
 } from "@/services/wallet.service";
 
 export function useWallet() {
-  const [wallet, setWallet] = useState<WalletBalance | null>(null);
   const [accounts, setAccounts] = useState<AccountBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,15 +16,11 @@ export function useWallet() {
       setLoading(true);
       setError(null);
 
-      const [walletData, accountData] = await Promise.all([
-        getWalletBalance(),
-        getAccountBalances(),
-      ]);
-
-      setWallet(walletData);
+      const accountData = await getAccountBalances();
       setAccounts(Array.isArray(accountData) ? accountData : []);
     } catch (err: any) {
       setError(err?.message || "Failed to load wallet");
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
@@ -46,7 +39,7 @@ export function useWallet() {
   }, [loadWallet]);
 
   return {
-    wallet,
+    wallet: null,
     accounts,
     assets: accounts,
     loading,
