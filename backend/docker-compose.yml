@@ -1,7 +1,10 @@
 services:
 
   backend:
-    image: dharmu86/bitnova-backend:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bitnova-backend:dev
     container_name: bitnova-backend
     restart: unless-stopped
 
