@@ -45,3 +45,4 @@ dist/
 # Temporary
 *.tmp
 *.temp
+*.tsbuildinfo
