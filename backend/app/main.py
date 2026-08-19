@@ -31,13 +31,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         if is_production:
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; base-uri 'self'; "
-                "frame-ancestors 'none'; object-src 'none'"
+                "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+                "object-src 'none'; connect-src 'self'"
             )
         else:
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; base-uri 'self'; "
-                "frame-ancestors 'none'; object-src 'none'; "
+                "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+                "object-src 'none'; connect-src 'self' http://localhost:8000 ws://localhost:8000; "
                 "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
                 "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
                 "img-src 'self' data: https://fastapi.tiangolo.com"
