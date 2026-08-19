@@ -28,11 +28,17 @@ function EthereumIcon() {
 
 function TetherIcon() {
   return (
-    <svg viewBox="0 0 32 32" className="h-full w-full">
+    <svg viewBox="0 0 32 32" className="h-full w-full" aria-label="USDT">
       <circle cx="16" cy="16" r="16" fill="#26a17b" />
-      <path d="M8.5 8.2h15v3.1h-5.65v2.25c4.25.25 7.15 1.05 7.15 2.1 0 1.3-4.03 2.35-9 2.35s-9-1.05-9-2.35c0-1.05 2.9-1.85 7.15-2.1v-2.25H8.5V8.2Z" fill="white" />
-      <path d="M16 18c4.97 0 9-1.05 9-2.35v6.1c0 1.45-4.03 2.6-9 2.6s-9-1.15-9-2.6v-6.1C7 16.95 11.03 18 16 18Z" fill="white" opacity=".98" />
-      <path d="M16 18v6.35" stroke="#26a17b" strokeWidth="1.2" />
+      <path
+        d="M8.1 8.1h15.8v3.35h-6.15v1.9c4.25.22 7.35 1.05 7.35 2.18 0 1.25-3.92 2.27-9.1 2.27s-9.1-1.02-9.1-2.27c0-1.13 3.1-1.96 7.35-2.18v-1.9H8.1V8.1Z"
+        fill="white"
+      />
+      <path
+        d="M16 17.35c5.03 0 9.1-1.02 9.1-2.27v6.02c0 1.55-4.07 2.8-9.1 2.8s-9.1-1.25-9.1-2.8v-6.02c0 1.25 4.07 2.27 9.1 2.27Z"
+        fill="white"
+      />
+      <path d="M16 17.35v6.45" stroke="#26a17b" strokeWidth="1.35" strokeLinecap="round" />
     </svg>
   );
 }
@@ -50,9 +56,16 @@ function SolanaIcon() {
 
 function InrIcon() {
   return (
-    <svg viewBox="0 0 32 32" className="h-full w-full">
+    <svg viewBox="0 0 32 32" className="h-full w-full" aria-label="INR">
       <circle cx="16" cy="16" r="16" fill="#f4f6f8" />
-      <path d="M9.5 9.5h12.3M9.5 13.1h12.3M16.9 13.1c-.6 4-3.1 5.4-6.1 5.4h-1l8.4 4.8" fill="none" stroke="#1f2937" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M9.4 9.6h13.1M9.4 13.2h13.1M16.9 13.2c-.55 3.65-2.75 5.25-6.15 5.25h-.9l8.15 5.05"
+        fill="none"
+        stroke="#263241"
+        strokeWidth="2.15"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
