@@ -19,6 +19,8 @@ class OrderResponse(BaseModel):
     id: UUID
     base_asset_id: UUID
     quote_asset_id: UUID
+    symbol: str | None = None
+    amount: Decimal | None = None
     client_order_id: str | None
     side: str
     order_type: str
