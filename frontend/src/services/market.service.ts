@@ -29,6 +29,22 @@ export type MarketAsset = {
   trading_enabled: boolean;
 };
 
+export type MarketCandle = {
+  symbol: string;
+  interval: string;
+  open_time: number;
+  close_time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  quote_volume: number;
+  closed: boolean;
+  usdt_inr_rate: number;
+  source: string;
+};
+
 export function getMarketAssets() {
   return apiClient<MarketAsset[]>("/assets");
 }
@@ -37,6 +53,19 @@ export function getMarketTicker(): Promise<MarketTicker[]> {
   return apiClient<MarketTicker[]>("/market/tickers");
 }
 
+export function getMarketCandles(symbol: string, interval: string, limit = 200): Promise<MarketCandle[]> {
+  return apiClient<MarketCandle[]>(
+    `/market/candles?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=${limit}`,
+  );
+}
+
 export function getMarketWebSocketUrl(): string {
   return API_BASE_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/api/v1/market/ws";
+}
+
+export function getMarketCandleWebSocketUrl(symbol: string, interval: string): string {
+  return (
+    API_BASE_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:") +
+    `/api/v1/market/ws/candles/${encodeURIComponent(symbol)}/${encodeURIComponent(interval)}`
+  );
 }
