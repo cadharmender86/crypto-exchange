@@ -107,11 +107,15 @@ class DepositService:
                 Deposit.blockchain_log_index == blockchain_log_index
             )
 
-        existing_result = await db.execute(select(Deposit).where(*duplicate_filter))
+        existing_result = await db.execute(
+            select(Deposit).where(*duplicate_filter)
+        )
         existing = existing_result.scalar_one_or_none()
         if existing is not None:
             if existing.user_id != user_id:
-                raise ValueError("Blockchain transaction already belongs to another user")
+                raise ValueError(
+                    "Blockchain transaction already belongs to another user"
+                )
             return existing
 
         deposit = Deposit(
@@ -123,9 +127,11 @@ class DepositService:
             blockchain_log_index=blockchain_log_index,
             amount=amount,
             confirmations=confirmations,
-            status=(self_status := DepositService.CONFIRMED)
-            if confirmations > 0
-            else DepositService.PENDING,
+            status=(
+                DepositService.CONFIRMED
+                if confirmations > 0
+                else DepositService.PENDING
+            ),
         )
 
         try:
@@ -140,7 +146,9 @@ class DepositService:
             if existing is None:
                 raise ValueError("Blockchain transaction could not be created")
             if existing.user_id != user_id:
-                raise ValueError("Blockchain transaction already belongs to another user")
+                raise ValueError(
+                    "Blockchain transaction already belongs to another user"
+                )
             return existing
 
         return deposit
