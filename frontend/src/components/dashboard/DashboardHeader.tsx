@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { logout } from "@/lib/api";
 
 export default function DashboardHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <header className="sticky top-0 z-30 h-[54px] border-b border-white/[0.06] bg-[#080d12]/95 px-4 backdrop-blur-xl md:px-6 lg:px-5">
@@ -30,7 +33,15 @@ export default function DashboardHeader() {
             {menuOpen && (
               <div className="absolute right-0 top-10 w-36 rounded-lg border border-white/10 bg-[#11161d] p-2 text-xs shadow-2xl">
                 <Link href="/profile" onClick={() => setMenuOpen(false)} className="block w-full rounded px-3 py-2 text-left hover:bg-white/5">Profile</Link>
-                <button className="w-full rounded px-3 py-2 text-left hover:bg-white/5">Logout</button>
+                <button
+                  onClick={async () => {
+                    logout();
+                    router.push("/login");
+                  }}
+                  className="w-full rounded px-3 py-2 text-left hover:bg-white/5"
+                >
+                  Logout
+                </button>
               </div>
             )}
           </div>
