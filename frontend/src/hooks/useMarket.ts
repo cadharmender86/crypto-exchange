@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMarketAssets, getMarketTicker } from "@/services/market.service";
-import { MarketAsset, MarketTicker } from "@/services/market.service";
-
+import {
+  getMarketAssets,
+  getMarketTicker,
+  getMarketWebSocketUrl,
+  MarketAsset,
+  MarketTicker,
+} from "@/services/market.service";
 
 export function useMarket() {
   const [ticker, setTicker] = useState<MarketTicker[]>([]);
@@ -12,6 +16,8 @@ export function useMarket() {
 
   useEffect(() => {
     let mounted = true;
+    let socket: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
     async function loadMarket() {
       try {
@@ -24,20 +30,62 @@ export function useMarket() {
         setTicker(tickerData || []);
         setAssets(assetData || []);
       } catch (error) {
-        console.error("Unable to load market assets:", error);
-        if (mounted) {
-          setTicker([]);
-          setAssets([]);
-        }
+        console.error("Unable to load market data:", error);
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
+    function connectWebSocket() {
+      if (!mounted) return;
+
+      try {
+        socket = new WebSocket(getMarketWebSocketUrl());
+
+        socket.onopen = () => {
+          console.info("Connected to BitNova live market feed");
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const update = JSON.parse(event.data) as MarketTicker;
+            if (!update.symbol) return;
+
+            setTicker((current) => {
+              const index = current.findIndex((item) => item.symbol === update.symbol);
+              if (index === -1) return [...current, update];
+
+              const next = [...current];
+              next[index] = update;
+              return next;
+            });
+          } catch (error) {
+            console.error("Invalid market WebSocket message:", error);
+          }
+        };
+
+        socket.onclose = () => {
+          if (mounted) {
+            reconnectTimer = setTimeout(connectWebSocket, 3000);
+          }
+        };
+
+        socket.onerror = () => {
+          socket?.close();
+        };
+      } catch (error) {
+        console.error("Unable to connect to live market feed:", error);
+        reconnectTimer = setTimeout(connectWebSocket, 3000);
+      }
+    }
+
     loadMarket();
+    connectWebSocket();
 
     return () => {
       mounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      socket?.close();
     };
   }, []);
 
