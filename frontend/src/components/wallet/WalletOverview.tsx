@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CoinIcon from "@/components/common/CoinIcon";
 import { useWallet } from "@/hooks/useWallet";
 import { getMarketAssets, getMarketTicker, type MarketAsset, type MarketTicker } from "@/services/market.service";
@@ -11,7 +11,7 @@ function useMarketData() {
   const [tickers, setTickers] = useState<MarketTicker[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useMemo(() => {
+  useEffect(() => {
     let active = true;
     Promise.all([getMarketAssets(), getMarketTicker()])
       .then(([assetData, tickerData]) => {
@@ -27,6 +27,7 @@ function useMarketData() {
       .finally(() => {
         if (active) setLoading(false);
       });
+
     return () => {
       active = false;
     };
@@ -59,9 +60,10 @@ export default function WalletOverview() {
       const symbol = asset?.symbol ?? "ASSET";
       const ticker = tickerMap.get(`${symbol}INR`) ?? tickerMap.get(`${symbol}USDT`);
       const priceInr = ticker?.price_inr ?? (ticker?.price_usdt && usdtInr ? ticker.price_usdt * usdtInr : 0);
-      const value = Number(account.total_balance) * priceInr;
       const available = Number(account.available_balance);
       const locked = Number(account.locked_balance);
+      const total = Number(account.total_balance);
+      const value = total * priceInr;
       const assetType = asset?.asset_type?.toUpperCase() === "FIAT" || symbol === "INR" ? "FIAT" : "CRYPTO";
 
       return {
@@ -71,8 +73,7 @@ export default function WalletOverview() {
         name: asset?.name ?? symbol,
         available,
         locked,
-        total: Number(account.total_balance),
-        priceInr,
+        total,
         value,
         change: ticker?.change_24h ?? 0,
         assetType,
@@ -89,6 +90,8 @@ export default function WalletOverview() {
   const portfolioValue = rows.reduce((sum, row) => sum + row.value, 0);
   const cryptoValue = rows.filter((row) => row.assetType === "CRYPTO").reduce((sum, row) => sum + row.value, 0);
   const inrRow = rows.find((row) => row.symbol === "INR");
+  const cryptoCount = rows.filter((row) => row.assetType === "CRYPTO").length;
+  const fiatCount = rows.filter((row) => row.assetType === "FIAT").length;
   const totalAssets = rows.filter((row) => row.total > 0).length;
   const loading = walletLoading || marketLoading;
 
@@ -114,8 +117,8 @@ export default function WalletOverview() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard title="Total Portfolio Value" value={formatInr(portfolioValue)} subtitle="Live INR valuation" />
           <SummaryCard title="INR Balance" value={formatInr(inrRow?.total ?? 0)} subtitle={`Available ${formatInr(inrRow?.available ?? 0)} · Locked ${formatInr(inrRow?.locked ?? 0)}`} />
-          <SummaryCard title="Crypto Value" value={formatInr(cryptoValue)} subtitle={`${rows.filter((row) => row.assetType === "CRYPTO").length} crypto assets`} />
-          <SummaryCard title="Total Assets" value={String(totalAssets)} subtitle={`${rows.filter((row) => row.assetType === "CRYPTO").length} crypto · ${rows.filter((row) => row.assetType === "FIAT").length} fiat`} />
+          <SummaryCard title="Crypto Value" value={formatInr(cryptoValue)} subtitle={`${cryptoCount} crypto assets`} />
+          <SummaryCard title="Total Assets" value={String(totalAssets)} subtitle={`${cryptoCount} crypto · ${fiatCount} fiat`} />
         </div>
 
         <section className="mt-5 overflow-hidden rounded-xl border border-white/10 bg-[#0d141c]">
