@@ -12,6 +12,12 @@ INITIAL_ASSETS = [
         "decimal_places": 6,
     },
     {
+        "symbol": "BITNOVA",
+        "name": "BitNova Token",
+        "asset_type": "CRYPTO",
+        "decimal_places": 6,
+    },
+    {
         "symbol": "BTC",
         "name": "Bitcoin",
         "asset_type": "CRYPTO",
