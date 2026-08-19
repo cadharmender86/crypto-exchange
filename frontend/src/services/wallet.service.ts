@@ -11,6 +11,16 @@ export function getWalletBalance() {
   return apiClient<WalletBalance>("/wallet/balance");
 }
 
-export function getWalletAssets() {
-  return apiClient("/wallet/assets");
+export interface AccountBalance {
+  id: string;
+  asset_id: string;
+  account_type: string;
+  available_balance: number;
+  locked_balance: number;
+  total_balance: number;
+  status: string;
+}
+
+export function getAccountBalances() {
+  return apiClient<AccountBalance[]>("/accounts");
 }

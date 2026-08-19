@@ -2,28 +2,30 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  AccountBalance,
+  getAccountBalances,
   getWalletBalance,
-  getWalletAssets,
+  WalletBalance,
 } from "@/services/wallet.service";
 
 export function useWallet() {
-  const [wallet, setWallet] = useState<any>(null);
-  const [assets, setAssets] = useState<any[]>([]);
+  const [wallet, setWallet] = useState<WalletBalance | null>(null);
+  const [accounts, setAccounts] = useState<AccountBalance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadWallet = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [walletData, assetsData] = await Promise.all([
+      const [walletData, accountData] = await Promise.all([
         getWalletBalance(),
-        getWalletAssets(),
+        getAccountBalances(),
       ]);
 
       setWallet(walletData);
-      setAssets(Array.isArray(assetsData) ? assetsData : []);
+      setAccounts(Array.isArray(accountData) ? accountData : []);
     } catch (err: any) {
       setError(err?.message || "Failed to load wallet");
     } finally {
@@ -45,7 +47,8 @@ export function useWallet() {
 
   return {
     wallet,
-    assets,
+    accounts,
+    assets: accounts,
     loading,
     error,
     refreshWallet: loadWallet,

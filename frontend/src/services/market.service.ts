@@ -7,8 +7,25 @@ export type MarketTicker = {
   change_24h?: number;
 };
 
+export type MarketAsset = {
+  id: string;
+  symbol: string;
+  name: string;
+  asset_type: string;
+  decimal_places: number;
+  is_active: boolean;
+  // precision: number;
+  // min_order_size: number;
+  // max_order_size: number;
+  // order_size_increment: number;
+  // price_increment: number;
+  deposit_enabled: boolean;
+  withdrawal_enabled: boolean;
+  trading_enabled: boolean;
+};
+
 export function getMarketAssets() {
-  return apiClient<any[]>("/assets");
+  return apiClient<MarketAsset[]>("/assets");
 }
 
 /**

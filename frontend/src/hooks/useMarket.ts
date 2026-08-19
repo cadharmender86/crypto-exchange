@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { getMarketAssets, getMarketTicker } from "@/services/market.service";
+import { MarketAsset, MarketTicker } from "@/services/market.service";
+
 
 export function useMarket() {
-  const [ticker, setTicker] = useState<any[]>([]);
-  const [assets, setAssets] = useState<any[]>([]);
+  const [ticker, setTicker] = useState<MarketTicker[]>([]);
+  const [assets, setAssets] = useState<MarketAsset[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

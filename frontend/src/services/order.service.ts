@@ -1,10 +1,13 @@
 import { apiClient } from "./apiClient";
 
 export type CreateOrderRequest = {
-  symbol: string;
+  base_asset_id: string;
+  quote_asset_id: string;
   side: "BUY" | "SELL";
-  amount: number;
-  quote_currency: "INR";
+  order_type?: "LIMIT";
+  price: number;
+  quantity: number;
+  client_order_id?: string;
 };
 
 export type OrderFill = {
