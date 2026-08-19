@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Sidebar from "../layout/Sidebar";
-import MobileBottomNav from "../layout/MobileBottomNav";
 import AdvertisementBanner from "./AdvertisementBanner";
 import DashboardStats from "./DashboardStats";
 import CryptoPortfolio from "./CryptoPortfolio";
@@ -32,60 +30,49 @@ export default function DashboardLayout() {
   const [showBalance, setShowBalance] = useState(true);
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden bg-[#080d12] pb-16 text-white lg:pb-0">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] lg:block">
-        <Sidebar />
-      </aside>
+    <section className="min-h-screen w-full overflow-x-hidden bg-[#080d12] text-white">
+      <DashboardHeader />
 
-      <section className="min-w-0 lg:ml-[240px]">
-        <DashboardHeader />
+      <div className="mx-auto w-full max-w-[1162px] px-4 py-4 md:px-5 lg:px-[18px] lg:py-4">
+        <AdvertisementBanner />
 
-        <div className="mx-auto w-full max-w-[1162px] px-4 py-4 md:px-5 lg:px-[18px] lg:py-4">
-          <AdvertisementBanner />
-
-          <div className="mt-6">
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight md:text-[25px]">Dashboard</h1>
-                <p className="mt-1 text-xs font-medium text-slate-300">Welcome back, Dharmender 👋</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowBalance((value) => !value)}
-                className="hidden items-center gap-2 text-xs font-semibold text-white md:flex"
-                aria-label={showBalance ? "Hide balance" : "Show balance"}
-              >
-                <span className="text-slate-300">
-                  {showBalance ? "◉" : "○"}
-                </span>
-
-                {showBalance ? "Hide" : "Show"} Balance
-              </button>
+        <div className="mt-6">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight md:text-[25px]">Dashboard</h1>
+              <p className="mt-1 text-xs font-medium text-slate-300">Welcome back, Dharmender 👋</p>
             </div>
-
-            <DashboardStats />
-
-            <div className="mt-4">
-              <CryptoPortfolio currentValue={761000} netCost={700000} profitLoss={61000} tradingVolume={2500000} showBalance={showBalance} />
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[37fr_30fr_33fr]">
-              <EasyBuySell />
-              <INRBalanceCard showBalance={showBalance} />
-              <QuickOrders showBalance={showBalance} />
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[67fr_33fr]">
-              <CoinBalanceTable showBalance={showBalance} />
-              <TradeHistory />
-            </div>
-
-            <div className="mt-4"><FuturesBanner /></div>
+            <button
+              type="button"
+              onClick={() => setShowBalance((value) => !value)}
+              className="hidden items-center gap-2 text-xs font-semibold text-white md:flex"
+              aria-label={showBalance ? "Hide balance" : "Show balance"}
+            >
+              <span className="text-slate-300">{showBalance ? "◉" : "○"}</span>
+              {showBalance ? "Hide" : "Show"} Balance
+            </button>
           </div>
-        </div>
-      </section>
 
-      <MobileBottomNav />
-    </main>
+          <DashboardStats />
+
+          <div className="mt-4">
+            <CryptoPortfolio currentValue={761000} netCost={700000} profitLoss={61000} tradingVolume={2500000} showBalance={showBalance} />
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[37fr_30fr_33fr]">
+            <EasyBuySell />
+            <INRBalanceCard showBalance={showBalance} />
+            <QuickOrders showBalance={showBalance} />
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[67fr_33fr]">
+            <CoinBalanceTable showBalance={showBalance} />
+            <TradeHistory />
+          </div>
+
+          <div className="mt-4"><FuturesBanner /></div>
+        </div>
+      </div>
+    </section>
   );
 }
