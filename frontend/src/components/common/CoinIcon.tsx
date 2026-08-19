@@ -1,7 +1,7 @@
 "use client";
 
 type CoinIconProps = {
-  symbol: string;
+  symbol?: string | null;
   size?: number;
 };
 
@@ -30,10 +30,9 @@ function TetherIcon() {
   return (
     <svg viewBox="0 0 32 32" className="h-full w-full" aria-label="USDT">
       <circle cx="16" cy="16" r="16" fill="#26a17b" />
-      <path d="M9.1 7.3h13.8v3.2h-5.25v3.0c4.65.2 8.05 1.1 8.05 2.25 0 1.35-4.35 2.45-9.7 2.45s-9.7-1.1-9.7-2.45c0-1.15 3.4-2.05 8.05-2.25v-3H9.1V7.3Z" fill="white" />
-      <path d="M7.3 15.75c0 1.35 3.9 2.45 8.7 2.45s8.7-1.1 8.7-2.45v6.45c0 1.45-3.9 2.65-8.7 2.65s-8.7-1.2-8.7-2.65v-6.45Z" fill="white" />
-      <path d="M16 18.2v6.55" stroke="#26a17b" strokeWidth="1.35" strokeLinecap="round" />
-      <ellipse cx="16" cy="15.75" rx="8.7" ry="2.45" fill="none" stroke="white" strokeWidth="1.15" />
+      <path d="M8.1 8.1h15.8v3.35h-6.15v1.9c4.25.22 7.35 1.05 7.35 2.18 0 1.25-3.92 2.27-9.1 2.27s-9.1-1.02-9.1-2.27c0-1.13 3.1-1.96 7.35-2.18v-1.9H8.1V8.1Z" fill="white" />
+      <path d="M16 17.35c5.03 0 9.1-1.02 9.1-2.27v6.02c0 1.55-4.07 2.8-9.1 2.8s-9.1-1.25-9.1-2.8v-6.02c0 1.25 4.07 2.27 9.1 2.27Z" fill="white" />
+      <path d="M16 17.35v6.45" stroke="#26a17b" strokeWidth="1.35" strokeLinecap="round" />
     </svg>
   );
 }
@@ -43,7 +42,7 @@ function SolanaIcon() {
     <svg viewBox="0 0 32 32" className="h-full w-full">
       <circle cx="16" cy="16" r="16" fill="#111827" />
       <path d="M8 10.5c.3-.4.7-.6 1.2-.6h13.3c.8 0 1.2.9.6 1.5l-2.1 2.1c-.3.3-.7.5-1.1.5H6.6c-.8 0-1.2-.9-.6-1.5L8 10.5Z" fill="#9945ff" />
-      <path d="M8 17.1c.3-.4.7-.6 1.2-.6h13.3c.8 0 1.2 1 .6 1.5L21 20.1c-.3.3-.7.5-1.1.5H6.6c-.8 0-1.2-.9-.6-1.5L8 17.1Z" fill="#14f195" />
+      <path d="M8 17.1c.3-.4.7-.6 1.2-.6h13.3c.8 0 1.2.9.6 1.5L21 20.1c-.3.3-.7.5-1.1.5H6.6c-.8 0-1.2-.9-.6-1.5L8 17.1Z" fill="#14f195" />
       <path d="M8 23.7c.3-.4.7-.6 1.2-.6h13.3c.8 0 1.2.9.6 1.5L21 26.7c-.3.3-.7.5-1.1.5H6.6c-.8 0-1.2-.9-.6-1.5L8 23.7Z" fill="#00c2ff" />
     </svg>
   );
@@ -74,7 +73,7 @@ const fallbackColors: Record<string, string> = {
 };
 
 export default function CoinIcon({ symbol, size = 32 }: CoinIconProps) {
-  const normalizedSymbol = symbol.toUpperCase();
+  const normalizedSymbol = (symbol ?? "").trim().toUpperCase();
   const Icon = iconMap[normalizedSymbol];
 
   if (Icon) {
@@ -86,8 +85,12 @@ export default function CoinIcon({ symbol, size = 32 }: CoinIconProps) {
   }
 
   return (
-    <span className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ width: size, height: size, backgroundColor: fallbackColors[normalizedSymbol] || "#374151" }}>
-      {normalizedSymbol.slice(0, 3)}
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+      style={{ width: size, height: size, backgroundColor: fallbackColors[normalizedSymbol] || "#374151" }}
+      aria-label={normalizedSymbol || "Unknown asset"}
+    >
+      {normalizedSymbol ? normalizedSymbol.slice(0, 3) : "?"}
     </span>
   );
 }
