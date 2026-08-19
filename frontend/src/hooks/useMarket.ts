@@ -80,7 +80,11 @@ export function useMarket() {
     }
 
     loadMarket();
-    connectWebSocket();
+    // Defer the initial socket creation by one event-loop turn. In React
+    // development Strict Mode, effects are setup/cleaned up once before the
+    // real setup; deferring prevents that temporary socket from being opened
+    // and immediately closed before the handshake completes.
+    reconnectTimer = setTimeout(connectWebSocket, 0);
 
     return () => {
       mounted = false;
