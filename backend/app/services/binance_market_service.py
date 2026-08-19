@@ -7,6 +7,8 @@ from typing import Any
 import websockets
 from websockets.exceptions import ConnectionClosed
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 BINANCE_WS_URL = "wss://stream.binance.com:9443/stream"
@@ -88,10 +90,17 @@ class BinanceMarketService:
         if not symbol:
             return
 
+        usdt_price = float(data.get("c", 0))
+        usdt_inr_rate = settings.market_usdt_inr_rate
+
         item = {
             "symbol": symbol,
-            "price": float(data.get("c", 0)),
-            "last_price": float(data.get("c", 0)),
+            "price": usdt_price,
+            "last_price": usdt_price,
+            "price_usdt": usdt_price,
+            "price_inr": usdt_price * usdt_inr_rate,
+            "usdt_inr_rate": usdt_inr_rate,
+            "quote_currency": "USDT",
             "change_24h": float(data.get("P", 0)),
             "high_24h": float(data.get("h", 0)),
             "low_24h": float(data.get("l", 0)),
