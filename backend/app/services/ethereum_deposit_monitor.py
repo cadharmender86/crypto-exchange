@@ -35,7 +35,7 @@ class EthereumDepositMonitor:
 
     def __init__(self) -> None:
         self.rpc_url = settings.ethereum_sepolia_rpc_url.strip()
-        self.contract_address = settings.ethereum_sepolia_usdt_contract.strip()
+        self.contract_address = settings.ethereum_sepolia_usdt_contract.strip().lower()
         self.network = settings.ethereum_sepolia_network.strip().upper()
         self.asset_symbol = settings.ethereum_sepolia_asset_symbol.strip().upper()
         self.required_confirmations = settings.ethereum_deposit_required_confirmations
@@ -47,6 +47,14 @@ class EthereumDepositMonitor:
             raise ValueError("ETHEREUM_SEPOLIA_RPC_URL is required")
         if not self.contract_address:
             raise ValueError("ETHEREUM_SEPOLIA_USDT_CONTRACT is required")
+        if not 1 <= self.required_confirmations:
+            raise ValueError("ETHEREUM_DEPOSIT_REQUIRED_CONFIRMATIONS must be at least 1")
+        if not 1 <= self.poll_seconds:
+            raise ValueError("ETHEREUM_DEPOSIT_POLL_SECONDS must be at least 1")
+        if not 1 <= self.lookback_blocks:
+            raise ValueError("ETHEREUM_DEPOSIT_LOOKBACK_BLOCKS must be at least 1")
+        if not 1 <= self.chunk_size:
+            raise ValueError("ETHEREUM_DEPOSIT_LOG_CHUNK_SIZE must be at least 1")
 
     async def _rpc(
         self,
@@ -167,8 +175,9 @@ class EthereumDepositMonitor:
 
         transaction_hash = log.get("transactionHash")
         block_number_hex = log.get("blockNumber")
+        log_index_hex = log.get("logIndex")
         data = log.get("data", "0x")
-        if not transaction_hash or not block_number_hex or not data:
+        if not transaction_hash or not block_number_hex or not log_index_hex or not data:
             return
 
         receipt = await self.receipt(client, transaction_hash)
@@ -189,15 +198,17 @@ class EthereumDepositMonitor:
         decimals = asset.decimal_places
         amount = Decimal(raw_amount) / (Decimal(10) ** decimals)
         block_number = int(block_number_hex, 16)
+        log_index = int(log_index_hex, 16)
         confirmations = max(1, latest_block - block_number + 1)
 
         deposit = await DepositService.create_pending_deposit(
             db,
-            user_id=(await self._wallet_user_id(db, wallet_address)),
+            user_id=await self._wallet_user_id(db, wallet_address),
             wallet_address_id=wallet_address.id,
             asset_id=wallet_address.asset_id,
             network=self.network,
             blockchain_tx_hash=transaction_hash,
+            blockchain_log_index=log_index,
             amount=amount,
             confirmations=0,
         )
