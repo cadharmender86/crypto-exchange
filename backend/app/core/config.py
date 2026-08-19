@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     # INR conversion without exposing pricing configuration to the browser.
     market_usdt_inr_rate: float = 88.0
 
+    # Ethereum deposit monitoring. RPC URLs and token contracts are supplied
+    # through backend/.env; secrets and provider credentials never belong in
+    # source control.
+    ethereum_sepolia_rpc_url: str = ""
+    ethereum_sepolia_usdt_contract: str = ""
+    ethereum_sepolia_network: str = "ETHEREUM_SEPOLIA"
+    ethereum_sepolia_asset_symbol: str = "USDT"
+    ethereum_deposit_required_confirmations: int = 3
+    ethereum_deposit_poll_seconds: int = 15
+    ethereum_deposit_lookback_blocks: int = 200
+    ethereum_deposit_log_chunk_size: int = 50
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
