@@ -1,6 +1,7 @@
 "use client";
 
 import CoinIcon from "@/components/common/CoinIcon";
+import CandlestickChart from "@/components/market/CandlestickChart";
 import { useMarket } from "@/hooks/useMarket";
 import { useWallet } from "@/hooks/useWallet";
 import { createOrder, getOpenOrders } from "@/services/order.service";
@@ -201,8 +202,8 @@ export default function BuySell() {
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_330px]">
           <div className="min-h-[440px] border-b border-white/[0.06] p-4 lg:border-b-0 lg:border-r">
-            <div className="mb-3 flex items-center justify-between text-sm text-slate-400"><span>Price Chart</span><span>1m · 5m · 15m · 1H · 4H · 1D</span></div>
-            <div className="flex h-[390px] items-center justify-center rounded-lg border border-white/[0.05] bg-[#0b1118] text-sm text-slate-500">Live {selectedCoin}/INR chart area</div>
+            <div className="mb-3 flex items-center justify-between text-sm text-slate-400"><span>Price Chart</span><span>Live Binance candles · INR</span></div>
+            <CandlestickChart coin={selectedCoin} />
           </div>
 
           <aside className="p-4">
