@@ -21,6 +21,24 @@ services:
         condition: service_started
 
 
+  ethereum-deposit-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bitnova-backend:dev
+    container_name: bitnova-ethereum-deposit-monitor
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    command: ["python", "-m", "app.services.ethereum_deposit_monitor"]
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
   postgres:
     image: postgres:17
     container_name: bitnova-postgres
