@@ -47,6 +47,9 @@ export default function CandlestickChart({ coin }: { coin: string }) {
       return () => undefined;
     }
 
+    // Binance is the market-data source, so BTCUSDT/ETHUSDT/SOLUSDT are
+    // intentionally used internally. The backend converts these candles to
+    // INR using the configured USDT/INR rate before returning them to the UI.
     const symbol = `${coin}USDT`;
 
     async function loadHistory() {
@@ -97,7 +100,10 @@ export default function CandlestickChart({ coin }: { coin: string }) {
     }
 
     loadHistory();
-    connect();
+    // Defer the initial socket creation by one event-loop turn. This avoids
+    // opening a WebSocket during React development Strict Mode's throwaway
+    // effect setup, which would otherwise be closed before its handshake.
+    reconnectTimer = setTimeout(connect, 0);
 
     return () => {
       mounted = false;
