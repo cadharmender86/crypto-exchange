@@ -6,6 +6,10 @@ export type MarketTicker = {
   symbol: string;
   price: number;
   last_price: number;
+  price_usdt?: number;
+  price_inr?: number;
+  usdt_inr_rate?: number;
+  quote_currency?: string;
   change_24h: number;
   high_24h?: number;
   low_24h?: number;
