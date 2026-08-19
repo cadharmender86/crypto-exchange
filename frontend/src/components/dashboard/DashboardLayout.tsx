@@ -30,12 +30,11 @@ function FuturesBanner() {
 export default function DashboardLayout() {
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-[#080d12] pb-16 text-white lg:pb-0">
-      {/* Approved reference uses a compact 180px navigation rail. */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[180px] lg:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] lg:block">
         <Sidebar />
       </aside>
 
-      <section className="min-w-0 lg:ml-[180px]">
+      <section className="min-w-0 lg:ml-[240px]">
         <DashboardHeader />
 
         <div className="mx-auto w-full max-w-[1162px] px-4 py-4 md:px-5 lg:px-[18px] lg:py-4">

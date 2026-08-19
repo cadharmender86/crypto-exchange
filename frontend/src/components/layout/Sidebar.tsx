@@ -22,7 +22,7 @@ export default function Sidebar() {
   const [active, setActive] = useState("Dashboard");
 
   return (
-    <aside className="flex h-screen w-[180px] flex-col border-r border-white/[0.07] bg-[#080d12] text-white">
+    <aside className="flex h-screen w-[240px] flex-col border-r border-white/[0.07] bg-[#080d12] text-white">
       <div className="flex h-[54px] items-center gap-2.5 border-b border-white/[0.05] px-4">
         <span className="text-[28px] font-black leading-none tracking-[-4px] text-blue-500">N</span>
         <span className="text-[17px] font-bold tracking-tight">BitNova</span>
@@ -30,7 +30,7 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
         {menuItems.map((item) => (
-          <button key={item.name} onClick={() => setActive(item.name)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition ${active === item.name ? "border border-blue-500/10 bg-[#102443] text-blue-400 shadow-[0_5px_20px_rgba(0,95,255,.08)]" : "text-slate-300 hover:bg-white/[0.04] hover:text-white"}`}>
+          <button key={item.name} onClick={() => setActive(item.name)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-base font-medium transition ${active === item.name ? "border border-blue-500/10 bg-[#102443] text-blue-400 shadow-[0_5px_20px_rgba(0,95,255,.08)]" : "text-slate-300 hover:bg-white/[0.04] hover:text-white"}`}>
             <span className="w-4 shrink-0 text-center text-sm text-slate-300">{item.icon}</span>
             <span className="truncate">{item.name}</span>
             {item.name === "More" && <span className="ml-auto text-[10px] text-slate-500">⌄</span>}

@@ -118,6 +118,20 @@ export async function register(email: string, password: string) {
   );
 }
 
+export function changePassword(token: string, currentPassword: string, newPassword: string) {
+  return apiFetch<{ message: string }>(
+    "/auth/change-password",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    },
+    token,
+  );
+}
+
 export function getHealth() {
   return apiFetch<{ service: string; version: string; status: string }>("/health");
 }

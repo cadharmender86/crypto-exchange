@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limiter import login_rate_limiter
-from app.api.dependencies import get_db
+from app.api.dependencies import get_current_user, get_db
 from app.core.config import settings
 from app.services.account_service import AccountService
 from app.models.user import User
@@ -18,6 +18,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     RegisterRequest,
     TokenResponse,
+    ChangePasswordRequest,
 )
 
 
@@ -49,6 +50,34 @@ def verify_password(
         plain_password,
         password_hash,
     )
+
+
+# ---------------------------------------------------------------------------
+# CHANGE PASSWORD
+# ---------------------------------------------------------------------------
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(request.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    if verify_password(request.new_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Choose a new password that differs from your current password",
+        )
+
+    current_user.password_hash = hash_password(request.new_password)
+    await db.commit()
+
+    return {"message": "Password updated successfully"}
 
 
 # ---------------------------------------------------------------------------

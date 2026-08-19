@@ -18,7 +18,7 @@ export default function DashboardHeader() {
         </div>
 
         <div className="ml-auto flex items-center gap-3 md:gap-5">
-          <button className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-1.5 text-xs font-bold shadow-lg shadow-blue-600/20 transition hover:brightness-110 md:px-5">Deposit</button>
+          <button className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-2 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:brightness-110 md:px-6">Deposit</button>
           <button className="relative text-lg text-slate-300 transition hover:text-white" aria-label="Notifications">
             ♧<span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">2</span>
           </button>
