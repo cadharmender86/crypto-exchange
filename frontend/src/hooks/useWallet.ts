@@ -1,10 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  AccountBalance,
-  getAccountBalances,
-} from "@/services/wallet.service";
+import { AccountBalance, getAccountBalances } from "@/services/wallet.service";
 
 export function useWallet() {
   const [accounts, setAccounts] = useState<AccountBalance[]>([]);
@@ -13,13 +10,11 @@ export function useWallet() {
 
   const loadWallet = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-
       const accountData = await getAccountBalances();
       setAccounts(Array.isArray(accountData) ? accountData : []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load wallet");
+      setError(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load wallet");
       setAccounts([]);
     } finally {
       setLoading(false);
@@ -27,13 +22,28 @@ export function useWallet() {
   }, []);
 
   useEffect(() => {
-    loadWallet();
+    let active = true;
 
-    const refreshWallet = () => loadWallet();
+    getAccountBalances()
+      .then((accountData) => {
+        if (!active) return;
+        setAccounts(Array.isArray(accountData) ? accountData : []);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Failed to load wallet");
+        setAccounts([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
+    const refreshWallet = () => { void loadWallet(); };
     window.addEventListener("order-created", refreshWallet);
 
     return () => {
+      active = false;
       window.removeEventListener("order-created", refreshWallet);
     };
   }, [loadWallet]);
