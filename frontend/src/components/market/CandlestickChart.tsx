@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  getMarketCandleWebSocketUrl,
-  getMarketCandles,
-  MarketCandle,
-} from "@/services/market.service";
+import { getMarketCandleWebSocketUrl, getMarketCandles, MarketCandle } from "@/services/market.service";
 
 const INTERVALS = [
   { label: "1m", value: "1m" },
@@ -27,32 +23,27 @@ export default function CandlestickChart({ coin }: { coin: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const candlesRef = useRef<MarketCandle[]>([]);
   const [interval, setInterval] = useState("1m");
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState("");
   const [error, setError] = useState("");
   const [lastPrice, setLastPrice] = useState(0);
+  const chartKey = `${coin}:${interval}`;
+  const unsupported = !SUPPORTED_COINS.has(coin);
+  const loading = !unsupported && loadedKey !== chartKey;
+  const displayError = unsupported ? "Live chart is not available for this market yet." : error;
 
   useEffect(() => {
     let mounted = true;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
+    if (unsupported) return () => undefined;
+
     candlesRef.current = [];
-    setLoading(true);
-    setError("");
-    setLastPrice(0);
-
-    if (!SUPPORTED_COINS.has(coin)) {
-      setLoading(false);
-      setError("Live chart is not available for this market yet.");
-      return () => undefined;
-    }
-
-    // Binance is the market-data source, so BTCUSDT/ETHUSDT/SOLUSDT are
-    // intentionally used internally. The backend converts these candles to
-    // INR using the configured USDT/INR rate before returning them to the UI.
     const symbol = `${coin}USDT`;
 
     async function loadHistory() {
+      setLastPrice(0);
+      setError("");
       try {
         const history = await getMarketCandles(symbol, interval, 200);
         if (!mounted) return;
@@ -62,7 +53,7 @@ export default function CandlestickChart({ coin }: { coin: string }) {
         console.error("Unable to load candle history:", loadError);
         if (mounted) setError("Unable to load chart data");
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setLoadedKey(chartKey);
       }
     }
 
@@ -74,12 +65,10 @@ export default function CandlestickChart({ coin }: { coin: string }) {
           try {
             const candle = JSON.parse(event.data) as MarketCandle;
             if (!candle?.open_time) return;
-
             const current = candlesRef.current;
             const index = current.findIndex((item) => item.open_time === candle.open_time);
-            if (index === -1) {
-              candlesRef.current = [...current.slice(-199), candle];
-            } else {
+            if (index === -1) candlesRef.current = [...current.slice(-199), candle];
+            else {
               const next = [...current];
               next[index] = candle;
               candlesRef.current = next;
@@ -99,10 +88,7 @@ export default function CandlestickChart({ coin }: { coin: string }) {
       }
     }
 
-    loadHistory();
-    // Defer the initial socket creation by one event-loop turn. This avoids
-    // opening a WebSocket during React development Strict Mode's throwaway
-    // effect setup, which would otherwise be closed before its handshake.
+    void loadHistory();
     reconnectTimer = setTimeout(connect, 0);
 
     return () => {
@@ -110,7 +96,7 @@ export default function CandlestickChart({ coin }: { coin: string }) {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       socket?.close();
     };
-  }, [coin, interval]);
+  }, [coin, interval, unsupported, chartKey]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -126,7 +112,6 @@ export default function CandlestickChart({ coin }: { coin: string }) {
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -136,7 +121,6 @@ export default function CandlestickChart({ coin }: { coin: string }) {
 
       const candles = candlesRef.current.slice(-100);
       if (!candles.length) return;
-
       const padding = { top: 18, right: 74, bottom: 30, left: 10 };
       const chartWidth = width - padding.left - padding.right;
       const chartHeight = height - padding.top - padding.bottom;
@@ -150,40 +134,28 @@ export default function CandlestickChart({ coin }: { coin: string }) {
       ctx.font = "11px sans-serif";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
-
       for (let i = 0; i <= 4; i += 1) {
         const y = padding.top + (chartHeight / 4) * i;
         const price = max - (range / 4) * i;
         ctx.strokeStyle = "rgba(148,163,184,0.10)";
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(padding.left, y);
-        ctx.lineTo(width - padding.right, y);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(width - padding.right, y); ctx.stroke();
         ctx.fillStyle = "#64748b";
         ctx.fillText(`₹${formatPrice(price)}`, width - 8, y);
       }
 
       const candleSlot = chartWidth / candles.length;
       const bodyWidth = Math.max(2, candleSlot * 0.58);
-
-      candles.forEach((candle, index) => {
-        const x = padding.left + candleSlot * index + candleSlot / 2;
+      candles.forEach((candle) => {
+        const x = padding.left + candleSlot * candles.indexOf(candle) + candleSlot / 2;
         const openY = scaleY(candle.open);
         const closeY = scaleY(candle.close);
         const highY = scaleY(candle.high);
         const lowY = scaleY(candle.low);
         const rising = candle.close >= candle.open;
         const color = rising ? "#10b981" : "#ef4444";
-
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, highY);
-        ctx.lineTo(x, lowY);
-        ctx.stroke();
-
+        ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, highY); ctx.lineTo(x, lowY); ctx.stroke();
         const bodyTop = Math.min(openY, closeY);
         const bodyHeight = Math.max(1, Math.abs(closeY - openY));
         ctx.fillRect(x - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
@@ -192,13 +164,8 @@ export default function CandlestickChart({ coin }: { coin: string }) {
       const latest = candles.at(-1);
       if (latest) {
         const y = scaleY(latest.close);
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "rgba(59,130,246,0.65)";
-        ctx.beginPath();
-        ctx.moveTo(padding.left, y);
-        ctx.lineTo(width - padding.right, y);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(59,130,246,0.65)";
+        ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(width - padding.right, y); ctx.stroke(); ctx.setLineDash([]);
       }
     };
 
@@ -206,37 +173,17 @@ export default function CandlestickChart({ coin }: { coin: string }) {
     observer.observe(container);
     const timer = window.setInterval(draw, 1000);
     draw();
-
-    return () => {
-      observer.disconnect();
-      window.clearInterval(timer);
-    };
-  }, [coin, interval, loading, lastPrice]);
+    return () => { observer.disconnect(); window.clearInterval(timer); };
+  }, [coin, interval, lastPrice, loadedKey]);
 
   return (
     <div ref={containerRef} className="relative h-[390px] w-full overflow-hidden rounded-lg border border-white/[0.05] bg-[#0b1118]">
       <canvas ref={canvasRef} className="absolute inset-0" aria-label={`${coin}/INR candlestick chart`} />
-      <div className="absolute left-3 top-3 z-10 flex items-center gap-2 text-[11px] text-slate-500">
-        <span>Live {coin}/INR</span>
-        {lastPrice > 0 && <span className="font-semibold text-slate-300">₹ {formatPrice(lastPrice)}</span>}
-      </div>
+      <div className="absolute left-3 top-3 z-10 flex items-center gap-2 text-[11px] text-slate-500"><span>Live {coin}/INR</span>{lastPrice > 0 && <span className="font-semibold text-slate-300">₹ {formatPrice(lastPrice)}</span>}</div>
       <div className="absolute right-3 top-2 z-10 flex rounded-lg border border-white/[0.06] bg-[#10161d]/90 p-1">
-        {INTERVALS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => setInterval(item.value)}
-            className={`rounded px-2 py-1 text-[10px] font-semibold ${interval === item.value ? "bg-blue-600 text-white" : "text-slate-500 hover:text-white"}`}
-          >
-            {item.label}
-          </button>
-        ))}
+        {INTERVALS.map((item) => <button key={item.value} type="button" onClick={() => setInterval(item.value)} className={`rounded px-2 py-1 text-[10px] font-semibold ${interval === item.value ? "bg-blue-600 text-white" : "text-slate-500 hover:text-white"}`}>{item.label}</button>)}
       </div>
-      {(loading || error) && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0b1118]/80 text-sm text-slate-500">
-          {loading ? "Loading live chart…" : error}
-        </div>
-      )}
+      {(loading || displayError) && <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0b1118]/80 text-sm text-slate-500">{loading ? "Loading live chart…" : displayError}</div>}
     </div>
   );
 }
