@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CoinIcon from "@/components/common/CoinIcon";
 import { useWallet } from "@/hooks/useWallet";
+import { getTransactionHistory, type TransactionHistoryItem } from "@/services/history.service";
 import { getMarketAssets, getMarketTicker, type MarketAsset, type MarketTicker } from "@/services/market.service";
 
 function useMarketData() {
@@ -47,12 +48,50 @@ function InrEquivalent({ value }: { value: number }) {
   return <div className="mt-1 text-xs text-slate-500">≈ {formatInr(value)}</div>;
 }
 
+function formatTransactionType(value: string) {
+  return value.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatTransactionDate(value: string) {
+  return new Date(value).toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function WalletOverview() {
   const { accounts, loading: walletLoading, error: walletError } = useWallet();
   const { assets, tickers, loading: marketLoading } = useMarketData();
+  const [transactions, setTransactions] = useState<TransactionHistoryItem[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"ALL" | "CRYPTO" | "FIAT">("ALL");
   const [hideZero, setHideZero] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getTransactionHistory()
+      .then((data) => {
+        if (active) setTransactions(Array.isArray(data) ? data.slice(0, 10) : []);
+      })
+      .catch((error) => {
+        if (active) {
+          setTransactions([]);
+          setTransactionsError(error?.message || "Failed to load transaction history");
+        }
+      })
+      .finally(() => {
+        if (active) setTransactionsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const rows = useMemo(() => {
     const assetMap = new Map(assets.map((asset) => [String(asset.id), asset]));
@@ -182,8 +221,46 @@ export default function WalletOverview() {
         </section>
 
         <section className="mt-5 rounded-xl border border-white/10 bg-[#0d141c] p-5">
-          <div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">Recent Transactions</h2><p className="mt-1 text-xs text-slate-500">Your latest wallet activity will appear here.</p></div><span className="text-xs text-slate-600">History API pending</span></div>
-          <div className="mt-5 rounded-lg border border-dashed border-white/10 py-10 text-center text-sm text-slate-500">No recent transactions to display.</div>
+          <div className="flex items-center justify-between">
+            <div><h2 className="text-lg font-semibold">Recent Transactions</h2><p className="mt-1 text-xs text-slate-500">Your latest wallet activity.</p></div>
+            <span className="text-xs text-slate-500">Showing {transactions.length}</span>
+          </div>
+
+          {transactionsLoading && <div className="mt-5 rounded-lg border border-white/10 py-8 text-center text-sm text-slate-500">Loading transaction history...</div>}
+          {!transactionsLoading && transactionsError && <div className="mt-5 rounded-lg border border-red-500/20 bg-red-500/10 py-8 text-center text-sm text-red-300">Unable to load transaction history.</div>}
+          {!transactionsLoading && !transactionsError && transactions.length === 0 && <div className="mt-5 rounded-lg border border-dashed border-white/10 py-10 text-center text-sm text-slate-500">No recent transactions to display.</div>}
+
+          {!transactionsLoading && !transactionsError && transactions.length > 0 && (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[800px] text-left text-sm">
+                <thead className="border-b border-white/10 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Type</th>
+                    <th className="px-4 py-3 font-medium">Asset</th>
+                    <th className="px-4 py-3 font-medium">Amount</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Reference</th>
+                    <th className="px-4 py-3 text-right font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((transaction, index) => {
+                    const credit = String(transaction.direction ?? transaction.entry_type).toUpperCase() === "CREDIT";
+                    return (
+                      <tr key={`${transaction.id ?? transaction.reference}-${index}`} className="border-b border-white/5">
+                        <td className="px-4 py-4 font-medium">{formatTransactionType(String(transaction.type ?? "TRANSACTION"))}</td>
+                        <td className="px-4 py-4"><div className="flex items-center gap-2"><CoinIcon symbol={String(transaction.asset ?? "INR")} size={28} /><span>{String(transaction.asset ?? "INR")}</span></div></td>
+                        <td className={`px-4 py-4 font-semibold ${credit ? "text-emerald-400" : "text-red-400"}`}>{credit ? "+" : "−"}{formatBalance(Number(transaction.amount ?? 0))} {String(transaction.asset ?? "")}</td>
+                        <td className="px-4 py-4"><span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400">{String(transaction.status ?? "UNKNOWN")}</span></td>
+                        <td className="px-4 py-4 text-xs text-slate-500">{String(transaction.reference ?? "—")}</td>
+                        <td className="px-4 py-4 text-right text-xs text-slate-400">{transaction.created_at ? formatTransactionDate(String(transaction.created_at)) : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
     </main>
