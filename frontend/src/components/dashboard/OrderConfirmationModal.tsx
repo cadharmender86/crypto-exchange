@@ -30,7 +30,7 @@ export default function OrderConfirmationModal({
 
         <div className="mt-5 space-y-3 text-sm text-gray-300">
           <div className="flex justify-between"><span>Pair</span><span>{coin}/INR</span></div>
-          <div className="flex justify-between"><span>Side</span><span>{mode}</span></div>
+          <div className="flex justify-between"><span>Side</span><span className={mode === "BUY" ? "font-semibold text-emerald-400" : "font-semibold text-red-400"}>{mode}</span></div>
           <div className="flex justify-between"><span>You Pay</span><span>₹{payAmount}</span></div>
           <div className="flex justify-between"><span>You Receive</span><span>{receiveAmount} {coin}</span></div>
           <div className="flex justify-between"><span>Fee</span><span>₹{fee.toFixed(2)}</span></div>
@@ -38,7 +38,7 @@ export default function OrderConfirmationModal({
 
         <div className="mt-6 flex gap-3">
           <button onClick={onCancel} className="flex-1 rounded-xl border border-gray-700 py-3">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 rounded-xl bg-blue-600 py-3">Confirm</button>
+          <button onClick={onConfirm} className={`flex-1 rounded-xl py-3 font-semibold text-white ${mode === "BUY" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-red-600 hover:bg-red-500"}`}>Confirm {mode}</button>
         </div>
       </div>
     </div>

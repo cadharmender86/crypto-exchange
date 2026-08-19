@@ -4,13 +4,22 @@ import { useState } from "react";
 
 export default function BuySell() {
   const [mode, setMode] = useState<"buy" | "sell">("buy");
+  const [payAmount, setPayAmount] = useState("");
+  const [receiveAmount, setReceiveAmount] = useState("");
+
+  const payCurrency = mode === "buy" ? "INR" : "USDT";
+  const receiveCurrency = mode === "buy" ? "USDT" : "INR";
+
+  const handleModeChange = (newMode: "buy" | "sell") => {
+    setMode(newMode);
+    setPayAmount("");
+    setReceiveAmount("");
+  };
 
   return (
     <section className="bg-[#0a0f1b] py-24">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
-
         <div className="grid gap-12 lg:grid-cols-2">
-
           <div>
             <p className="text-sm font-semibold uppercase tracking-widest text-blue-400">
               Easy trading
@@ -27,13 +36,13 @@ export default function BuySell() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-
             <div className="mb-6 grid grid-cols-2 rounded-xl bg-black/30 p-1">
               <button
-                onClick={() => setMode("buy")}
+                type="button"
+                onClick={() => handleModeChange("buy")}
                 className={`rounded-lg py-3 font-semibold ${
                   mode === "buy"
-                    ? "bg-blue-500 text-white"
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600"
                     : "text-gray-400"
                 }`}
               >
@@ -41,10 +50,11 @@ export default function BuySell() {
               </button>
 
               <button
-                onClick={() => setMode("sell")}
+                type="button"
+                onClick={() => handleModeChange("sell")}
                 className={`rounded-lg py-3 font-semibold ${
                   mode === "sell"
-                    ? "bg-blue-500 text-white"
+                    ? "bg-red-500 text-white hover:bg-red-600"
                     : "text-gray-400"
                 }`}
               >
@@ -59,12 +69,16 @@ export default function BuySell() {
             <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-4">
               <input
                 type="number"
+                min="0"
+                step="any"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
                 placeholder="0.00"
                 className="w-full bg-transparent text-xl text-white outline-none"
               />
 
               <span className="font-semibold text-white">
-                INR
+                {payCurrency}
               </span>
             </div>
 
@@ -79,19 +93,25 @@ export default function BuySell() {
             <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-4">
               <input
                 type="number"
+                min="0"
+                step="any"
+                value={receiveAmount}
+                onChange={(e) => setReceiveAmount(e.target.value)}
                 placeholder="0.00"
                 className="w-full bg-transparent text-xl text-white outline-none"
               />
 
               <span className="font-semibold text-white">
-                USDT
+                {receiveCurrency}
               </span>
             </div>
 
-            <button className="mt-6 w-full rounded-xl bg-blue-500 py-4 font-semibold text-white hover:bg-blue-600">
+            <button
+              type="button"
+              className={`mt-6 w-full rounded-xl py-4 font-semibold text-white ${mode === "buy" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-red-500 hover:bg-red-600"}`}
+            >
               {mode === "buy" ? "Buy USDT" : "Sell USDT"}
             </button>
-
           </div>
         </div>
       </div>
