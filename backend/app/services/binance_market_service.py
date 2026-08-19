@@ -146,7 +146,28 @@ class BinanceMarketService:
         self._latest[source_symbol] = usdt_item
         self._latest[inr_symbol] = inr_item
 
-        for item in (usdt_item, inr_item):
+        # USDT is the quote currency of the Binance source stream, so there is
+        # no separate USDTUSDT Binance ticker. Publish a synthetic USDTINR
+        # ticker from the configured USDT/INR reference rate so the frontend
+        # can treat USDT exactly like BTC, ETH and SOL.
+        usdt_inr_item = {
+            "symbol": "USDTINR",
+            "price": usdt_inr_rate,
+            "last_price": usdt_inr_rate,
+            "price_usdt": 1.0,
+            "price_inr": usdt_inr_rate,
+            "usdt_inr_rate": usdt_inr_rate,
+            "quote_currency": "INR",
+            "change_24h": 0.0,
+            "high_24h": usdt_inr_rate,
+            "low_24h": usdt_inr_rate,
+            "volume_24h": 0.0,
+            "volume_currency": "USDT",
+            "source": "CONFIGURED_USDT_INR_RATE",
+        }
+        self._latest["USDTINR"] = usdt_inr_item
+
+        for item in (usdt_item, inr_item, usdt_inr_item):
             for queue in tuple(self._subscribers):
                 if queue.full():
                     try:
