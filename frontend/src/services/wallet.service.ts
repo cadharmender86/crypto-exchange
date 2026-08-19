@@ -1,5 +1,9 @@
 import { apiClient } from "./apiClient";
 
+function hasAccessToken() {
+  return typeof window !== "undefined" && Boolean(localStorage.getItem("bitnova_access_token"));
+}
+
 export interface WalletBalance {
   totalValue: number;
   available: number;
@@ -22,5 +26,9 @@ export interface AccountBalance {
 }
 
 export function getAccountBalances() {
+  if (!hasAccessToken()) {
+    return Promise.resolve([] as AccountBalance[]);
+  }
+
   return apiClient<AccountBalance[]>("/accounts");
 }
