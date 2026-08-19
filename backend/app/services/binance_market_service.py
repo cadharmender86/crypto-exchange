@@ -94,15 +94,26 @@ class BinanceMarketService:
         usdt_inr_rate = settings.market_usdt_inr_rate
         inr_price = usdt_price * usdt_inr_rate
 
-        common = {
+        # Binance's ticker high/low are in the source quote currency (USDT).
+        # Convert them as well so the synthetic INR ticker is internally consistent.
+        high_usdt = float(data.get("h", 0))
+        low_usdt = float(data.get("l", 0))
+        high_inr = high_usdt * usdt_inr_rate
+        low_inr = low_usdt * usdt_inr_rate
+
+        # Binance volume is base-asset volume. It is valid to carry it across
+        # the synthetic INR ticker unchanged because the base quantity is the same.
+        base_volume = float(data.get("v", 0))
+
+        common_usdt = {
             "price_usdt": usdt_price,
             "price_inr": inr_price,
             "usdt_inr_rate": usdt_inr_rate,
-            "quote_currency": "INR",
             "change_24h": float(data.get("P", 0)),
-            "high_24h": float(data.get("h", 0)),
-            "low_24h": float(data.get("l", 0)),
-            "volume_24h": float(data.get("v", 0)),
+            "high_24h": high_usdt,
+            "low_24h": low_usdt,
+            "volume_24h": base_volume,
+            "volume_currency": source_symbol.removesuffix("USDT"),
             "source": "BINANCE",
         }
 
@@ -110,7 +121,7 @@ class BinanceMarketService:
             "symbol": source_symbol,
             "price": usdt_price,
             "last_price": usdt_price,
-            **common,
+            **common_usdt,
             "quote_currency": "USDT",
         }
 
@@ -120,8 +131,15 @@ class BinanceMarketService:
             "symbol": inr_symbol,
             "price": inr_price,
             "last_price": inr_price,
-            **common,
+            "price_usdt": usdt_price,
+            "price_inr": inr_price,
+            "usdt_inr_rate": usdt_inr_rate,
             "quote_currency": "INR",
+            "change_24h": float(data.get("P", 0)),
+            "high_24h": high_inr,
+            "low_24h": low_inr,
+            "volume_24h": base_volume,
+            "volume_currency": base_symbol,
             "source": "BINANCE+INR_RATE",
         }
 
