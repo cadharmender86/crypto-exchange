@@ -1,5 +1,9 @@
 import { apiClient } from "./apiClient";
 
+function hasAccessToken() {
+  return typeof window !== "undefined" && Boolean(localStorage.getItem("bitnova_access_token"));
+}
+
 export type CreateOrderRequest = {
   base_asset_id: string;
   quote_asset_id: string;
@@ -31,6 +35,10 @@ export type OrderResponse = {
 };
 
 export function getOpenOrders() {
+  if (!hasAccessToken()) {
+    return Promise.resolve([] as OrderResponse[]);
+  }
+
   return apiClient<OrderResponse[]>("/orders/open");
 }
 
