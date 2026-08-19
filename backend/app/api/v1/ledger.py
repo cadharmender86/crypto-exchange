@@ -8,9 +8,11 @@ from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.account import Account
 from app.models.asset import Asset
+from app.models.deposit import Deposit
 from app.models.ledger_entry import LedgerEntry
 from app.models.ledger_transaction import LedgerTransaction
 from app.models.user import User
+from app.models.withdrawal import Withdrawal
 
 
 router = APIRouter(
@@ -59,12 +61,20 @@ async def get_transaction_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return recent ledger activity for the authenticated user."""
+    """Return recent transaction activity with the business-operation status."""
     result = await db.execute(
-        select(LedgerTransaction, LedgerEntry, Asset)
+        select(LedgerTransaction, LedgerEntry, Asset, Deposit, Withdrawal)
         .join(LedgerEntry, LedgerEntry.transaction_id == LedgerTransaction.id)
         .join(Account, Account.id == LedgerEntry.account_id)
         .join(Asset, Asset.id == Account.asset_id)
+        .outerjoin(
+            Deposit,
+            Deposit.ledger_transaction_id == LedgerTransaction.id,
+        )
+        .outerjoin(
+            Withdrawal,
+            Withdrawal.ledger_transaction_id == LedgerTransaction.id,
+        )
         .where(Account.user_id == current_user.id)
         .order_by(desc(LedgerTransaction.created_at))
         .limit(limit)
@@ -72,18 +82,30 @@ async def get_transaction_history(
 
     rows = result.all()
 
-    return [
-        {
-            "id": str(transaction.id),
-            "reference": transaction.reference,
-            "type": transaction.transaction_type,
-            "status": transaction.status,
-            "description": transaction.description,
-            "asset": asset.symbol,
-            "amount": str(entry.amount),
-            "entry_type": entry.entry_type,
-            "direction": "CREDIT" if entry.entry_type.upper() == "CREDIT" else "DEBIT",
-            "created_at": transaction.created_at.isoformat(),
-        }
-        for transaction, entry, asset in rows
-    ]
+    history = []
+    for transaction, entry, asset, deposit, withdrawal in rows:
+        business_status = (
+            deposit.status
+            if deposit is not None
+            else withdrawal.status
+            if withdrawal is not None
+            else transaction.status
+        )
+
+        history.append(
+            {
+                "id": str(transaction.id),
+                "reference": transaction.reference,
+                "type": transaction.transaction_type,
+                "status": business_status,
+                "ledger_status": transaction.status,
+                "description": transaction.description,
+                "asset": asset.symbol,
+                "amount": str(entry.amount),
+                "entry_type": entry.entry_type,
+                "direction": "CREDIT" if entry.entry_type.upper() == "CREDIT" else "DEBIT",
+                "created_at": transaction.created_at.isoformat(),
+            }
+        )
+
+    return history
