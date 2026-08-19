@@ -16,7 +16,8 @@ class Deposit(Base):
         UniqueConstraint(
             "network",
             "blockchain_tx_hash",
-            name="uq_deposit_network_tx_hash",
+            "blockchain_log_index",
+            name="uq_deposit_network_tx_log",
         ),
     )
 
@@ -56,6 +57,11 @@ class Deposit(Base):
     blockchain_tx_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
+    )
+
+    blockchain_log_index: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
     )
 
     amount: Mapped[Decimal] = mapped_column(
