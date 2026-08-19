@@ -12,7 +12,6 @@ export default function DepositPage() {
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [selectedNetwork, setSelectedNetwork] = useState("");
   const [loading, setLoading] = useState(true);
-  const [addressLoading, setAddressLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,26 +48,21 @@ export default function DepositPage() {
     };
   }, []);
 
+  const effectiveAssetId = selectedAssetId || assets[0]?.id || "";
+
   const availableNetworks = useMemo(
-    () => addresses.filter((item) => item.asset_id === selectedAssetId),
-    [addresses, selectedAssetId],
+    () => addresses.filter((item) => item.asset_id === effectiveAssetId),
+    [addresses, effectiveAssetId],
   );
+
+  const effectiveNetwork = selectedNetwork || availableNetworks[0]?.network || "";
 
   const selectedAddress = useMemo(
-    () => availableNetworks.find((item) => item.network === selectedNetwork) ?? availableNetworks[0],
-    [availableNetworks, selectedNetwork],
+    () => availableNetworks.find((item) => item.network === effectiveNetwork) ?? availableNetworks[0],
+    [availableNetworks, effectiveNetwork],
   );
 
-  const selectedAsset = assets.find((asset) => asset.id === selectedAssetId);
-
-  useEffect(() => {
-    if (!selectedAssetId && assets.length > 0) {
-      setSelectedAssetId(assets[0].id);
-      return;
-    }
-    const firstNetwork = addresses.find((item) => item.asset_id === selectedAssetId);
-    setSelectedNetwork(firstNetwork?.network ?? "");
-  }, [selectedAssetId, assets, addresses]);
+  const selectedAsset = assets.find((asset) => asset.id === effectiveAssetId);
 
   const copyAddress = async () => {
     if (!selectedAddress) return;
@@ -94,19 +88,17 @@ export default function DepositPage() {
           <div className="grid gap-5 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">Asset</label>
-              <select value={selectedAssetId} onChange={(event) => { setSelectedAssetId(event.target.value); setSelectedNetwork(""); }} className="w-full rounded-lg border border-white/10 bg-[#080d12] px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+              <select value={effectiveAssetId} onChange={(event) => { setSelectedAssetId(event.target.value); setSelectedNetwork(""); }} className="w-full rounded-lg border border-white/10 bg-[#080d12] px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
                 {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.symbol} — {asset.name}</option>)}
               </select>
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">Network</label>
-              <select value={selectedNetwork || selectedAddress?.network || ""} onChange={(event) => setSelectedNetwork(event.target.value)} disabled={availableNetworks.length === 0} className="w-full rounded-lg border border-white/10 bg-[#080d12] px-4 py-3 text-sm text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
+              <select value={effectiveNetwork} onChange={(event) => setSelectedNetwork(event.target.value)} disabled={availableNetworks.length === 0} className="w-full rounded-lg border border-white/10 bg-[#080d12] px-4 py-3 text-sm text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
                 {availableNetworks.length === 0 ? <option value="">No network available</option> : availableNetworks.map((item) => <option key={item.id} value={item.network}>{item.network}</option>)}
               </select>
             </div>
           </div>
-
-          {addressLoading && <div className="mt-6 text-sm text-slate-500">Loading address...</div>}
 
           {selectedAddress ? (
             <div className="mt-6 rounded-xl border border-white/10 bg-[#080d12] p-5">
