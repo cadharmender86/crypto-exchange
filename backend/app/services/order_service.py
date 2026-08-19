@@ -103,6 +103,88 @@ class OrderService:
         return order
 
     @staticmethod
+    async def list_orders(
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        status_filter: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        query = select(Order).where(Order.user_id == user_id)
+        if status_filter:
+            query = query.where(Order.status == status_filter)
+        query = query.order_by(Order.created_at.desc()).limit(limit)
+
+        result = await db.execute(query)
+        orders = list(result.scalars().all())
+        if not orders:
+            return []
+
+        asset_ids = {order.base_asset_id for order in orders}
+        asset_ids.update(order.quote_asset_id for order in orders)
+        assets_result = await db.execute(select(Asset).where(Asset.id.in_(asset_ids)))
+        assets = {asset.id: asset for asset in assets_result.scalars().all()}
+
+        return [
+            OrderService._order_payload(order, assets)
+            for order in orders
+        ]
+
+    @staticmethod
+    async def get_order(
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        order_id: UUID,
+    ) -> dict:
+        result = await db.execute(
+            select(Order).where(Order.id == order_id, Order.user_id == user_id)
+        )
+        order = result.scalar_one_or_none()
+        if order is None:
+            raise ValueError("Order not found")
+
+        assets_result = await db.execute(
+            select(Asset).where(Asset.id.in_([order.base_asset_id, order.quote_asset_id]))
+        )
+        assets = {asset.id: asset for asset in assets_result.scalars().all()}
+        return OrderService._order_payload(order, assets)
+
+    @staticmethod
+    def _order_payload(order: Order, assets: dict[UUID, Asset]) -> dict:
+        base_asset = assets.get(order.base_asset_id)
+        quote_asset = assets.get(order.quote_asset_id)
+        amount = None
+        if order.price is not None:
+            amount = Decimal(str(order.price)) * Decimal(str(order.quantity))
+
+        return {
+            "id": order.id,
+            "base_asset_id": order.base_asset_id,
+            "quote_asset_id": order.quote_asset_id,
+            "symbol": (
+                f"{base_asset.symbol}/{quote_asset.symbol}"
+                if base_asset and quote_asset
+                else None
+            ),
+            "amount": amount,
+            "client_order_id": order.client_order_id,
+            "side": order.side,
+            "order_type": order.order_type,
+            "status": order.status,
+            "price": order.price,
+            "quantity": order.quantity,
+            "filled_quantity": order.filled_quantity,
+            "remaining_quantity": order.remaining_quantity,
+            "average_execution_price": order.average_execution_price,
+            "fee_amount": order.fee_amount,
+            "fee_asset_id": order.fee_asset_id,
+            "created_at": order.created_at,
+            "updated_at": order.updated_at,
+            "cancelled_at": order.cancelled_at,
+        }
+
+    @staticmethod
     async def cancel_order(
         db: AsyncSession,
         *,
