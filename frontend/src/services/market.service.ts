@@ -1,10 +1,16 @@
 import { apiClient } from "./apiClient";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export type MarketTicker = {
   symbol: string;
-  price?: number;
-  last_price?: number;
-  change_24h?: number;
+  price: number;
+  last_price: number;
+  change_24h: number;
+  high_24h?: number;
+  low_24h?: number;
+  volume_24h?: number;
+  source?: string;
 };
 
 export type MarketAsset = {
@@ -14,11 +20,6 @@ export type MarketAsset = {
   asset_type: string;
   decimal_places: number;
   is_active: boolean;
-  // precision: number;
-  // min_order_size: number;
-  // max_order_size: number;
-  // order_size_increment: number;
-  // price_increment: number;
   deposit_enabled: boolean;
   withdrawal_enabled: boolean;
   trading_enabled: boolean;
@@ -28,11 +29,10 @@ export function getMarketAssets() {
   return apiClient<MarketAsset[]>("/assets");
 }
 
-/**
- * Market ticker API is not implemented by the current backend yet.
- * Return an empty list so dashboard consumers remain stable until the
- * market-data service/order-book integration is introduced.
- */
 export function getMarketTicker(): Promise<MarketTicker[]> {
-  return Promise.resolve([]);
+  return apiClient<MarketTicker[]>("/market/tickers");
+}
+
+export function getMarketWebSocketUrl(): string {
+  return API_BASE_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/api/v1/market/ws";
 }
