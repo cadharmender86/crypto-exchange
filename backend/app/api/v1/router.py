@@ -5,7 +5,7 @@ from app.api.v1.assets import router as assets_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.health import router as health_router
 from app.api.v1.internal import router as internal_router
-from app.api.v1.ledger import router as ledger_router
+from app.api.v1.ledger import router as ledger_router, transactions_router
 from app.api.v1.transfers import router as transfers_router
 from app.api.v1.users import router as users_router
 from app.api.v1.wallets import router as wallets_router
@@ -30,6 +30,7 @@ api_router.include_router(accounts_router)
 api_router.include_router(deposits_router)
 api_router.include_router(withdrawals_router)
 api_router.include_router(ledger_router)
+api_router.include_router(transactions_router)
 api_router.include_router(transfers_router)
 api_router.include_router(assets_router)
 api_router.include_router(health_router)
