@@ -1,5 +1,9 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+const configuredBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+const API_BASE_URL = configuredBaseUrl.replace(/\/$/, "").endsWith("/api/v1")
+  ? configuredBaseUrl.replace(/\/$/, "")
+  : `${configuredBaseUrl.replace(/\/$/, "")}/api/v1`;
 
 export async function apiClient<T>(
   endpoint: string,
