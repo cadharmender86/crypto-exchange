@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Sidebar from "../layout/Sidebar";
 import MobileBottomNav from "../layout/MobileBottomNav";
 import AdvertisementBanner from "./AdvertisementBanner";
@@ -28,6 +29,8 @@ function FuturesBanner() {
 }
 
 export default function DashboardLayout() {
+  const [showBalance, setShowBalance] = useState(true);
+
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-[#080d12] pb-16 text-white lg:pb-0">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] lg:block">
@@ -46,23 +49,34 @@ export default function DashboardLayout() {
                 <h1 className="text-2xl font-bold tracking-tight md:text-[25px]">Dashboard</h1>
                 <p className="mt-1 text-xs font-medium text-slate-300">Welcome back, Dharmender 👋</p>
               </div>
-              <button className="hidden items-center gap-2 text-xs font-semibold text-white md:flex"><span className="text-slate-300">◉</span> Hide Balance</button>
+              <button
+                type="button"
+                onClick={() => setShowBalance((value) => !value)}
+                className="hidden items-center gap-2 text-xs font-semibold text-white md:flex"
+                aria-label={showBalance ? "Hide balance" : "Show balance"}
+              >
+                <span className="text-slate-300">
+                  {showBalance ? "◉" : "○"}
+                </span>
+
+                {showBalance ? "Hide" : "Show"} Balance
+              </button>
             </div>
 
             <DashboardStats />
 
             <div className="mt-4">
-              <CryptoPortfolio currentValue={761000} netCost={700000} profitLoss={61000} tradingVolume={2500000} />
+              <CryptoPortfolio currentValue={761000} netCost={700000} profitLoss={61000} tradingVolume={2500000} showBalance={showBalance} />
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[37fr_30fr_33fr]">
               <EasyBuySell />
-              <INRBalanceCard />
-              <QuickOrders />
+              <INRBalanceCard showBalance={showBalance} />
+              <QuickOrders showBalance={showBalance} />
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[67fr_33fr]">
-              <CoinBalanceTable />
+              <CoinBalanceTable showBalance={showBalance} />
               <TradeHistory />
             </div>
 
