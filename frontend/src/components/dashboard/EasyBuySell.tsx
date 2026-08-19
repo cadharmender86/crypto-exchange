@@ -44,71 +44,42 @@ export default function EasyBuySell() {
     (asset) => asset.symbol === "INR",
   );
 
-  /*
-   * Find the selected user's account.
-   */
   const selectedAccount = accounts.find(
     (account) => account.asset_id === selectedAsset?.id,
   );
 
-  /*
-   * INR account.
-   */
   const inrAccount = accounts.find(
     (account) => account.asset_id === inrAsset?.id,
   );
 
-  /*
-   * Current market price.
-   *
-   * Currently your market.service.ts returns an empty ticker array,
-   * so this will remain 0 until the ticker API is implemented.
-   */
+  // The backend publishes the normalized INR ticker (for example BTCINR).
+  // Do not calculate or hard-code an INR conversion rate in the browser.
   const selectedTicker = useMemo(
     () =>
       ticker.find(
-        (item: any) =>
-          item.symbol === `${selectedCoin}INR` ||
-          item.symbol === `${selectedCoin}/INR`,
+        (item) => item.symbol === `${selectedCoin}INR`,
       ),
     [ticker, selectedCoin],
   );
 
   const price = Number(
-    selectedTicker?.last_price ||
-      selectedTicker?.price ||
+    selectedTicker?.price_inr ??
+      selectedTicker?.last_price ??
+      selectedTicker?.price ??
       0,
   );
 
   const payAmount = Number(amount || 0);
 
-  /*
-   * BUY:
-   * User enters INR.
-   * Backend quantity must be crypto quantity.
-   *
-   * Example:
-   * ₹10,000 / ₹90 = 111.11111111 USDT
-   *
-   * SELL:
-   * User enters crypto quantity.
-   *
-   * Example:
-   * 10 USDT = quantity 10
-   */
+  // BUY: INR entered -> crypto quantity.
+  // SELL: crypto entered -> crypto quantity.
   const quantity = isBuy
     ? price > 0
       ? payAmount / price
       : 0
     : payAmount;
 
-  /*
-   * BUY:
-   * INR -> selected crypto
-   *
-   * SELL:
-   * selected crypto -> INR
-   */
+  // BUY: crypto received. SELL: INR received.
   const receiveAmount =
     price > 0 && payAmount > 0
       ? isBuy
@@ -118,20 +89,8 @@ export default function EasyBuySell() {
         ? "0.00000000"
         : "0.00";
 
-  /*
-   * Fee is calculated on the amount entered by the user.
-   */
   const fee = payAmount * TRADING_FEE_PERCENT / 100;
 
-  /*
-   * BUY:
-   * User needs INR + fee.
-   *
-   * SELL:
-   * User needs selected crypto.
-   *
-   * The backend remains the final authority for balance validation.
-   */
   const requiredBalance = isBuy
     ? payAmount + fee
     : payAmount;
@@ -144,9 +103,7 @@ export default function EasyBuySell() {
     payAmount > 0 &&
     requiredBalance > availableBalance;
 
-  const missingAssets =
-    !selectedAsset ||
-    !inrAsset;
+  const missingAssets = !selectedAsset || !inrAsset;
 
   async function handleConfirmOrder() {
     setSubmitting(true);
@@ -190,9 +147,7 @@ export default function EasyBuySell() {
       setAmount("");
       setMessage("Order placed successfully");
     } catch (error: any) {
-      setMessage(
-        error?.message || "Order placement failed",
-      );
+      setMessage(error?.message || "Order placement failed");
     } finally {
       setSubmitting(false);
     }
@@ -200,15 +155,10 @@ export default function EasyBuySell() {
 
   return (
     <section className="h-full rounded-lg border border-white/[0.06] bg-[#10161d] p-4 text-white">
-
-      {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-bold">
-          Easy Buy / Sell
-        </h2>
+        <h2 className="text-sm font-bold">Easy Buy / Sell</h2>
       </div>
 
-      {/* Coin selector */}
       <div className="mb-2 flex items-center gap-2 overflow-hidden">
         {coins.slice(0, 4).map((coin) => (
           <button
@@ -223,11 +173,7 @@ export default function EasyBuySell() {
                 : "bg-[#18202a] text-slate-300"
             }`}
           >
-            <CoinIcon
-              symbol={coin}
-              size={18}
-            />
-
+            <CoinIcon symbol={coin} size={18} />
             {coin}
           </button>
         ))}
@@ -240,9 +186,7 @@ export default function EasyBuySell() {
         </button>
       </div>
 
-      {/* BUY / SELL */}
       <div className="grid grid-cols-2 rounded-md bg-[#17263a] p-0.5 text-[10px] font-bold">
-
         <button
           onClick={() => {
             setMode("BUY");
@@ -256,7 +200,6 @@ export default function EasyBuySell() {
         >
           BUY
         </button>
-
         <button
           onClick={() => {
             setMode("SELL");
@@ -272,17 +215,13 @@ export default function EasyBuySell() {
         </button>
       </div>
 
-      {/* You Pay */}
       <div className="mt-2">
         <label className="text-[9px] text-slate-400">
           You Pay ({isBuy ? "INR" : selectedCoin})
         </label>
-
         <div
           className={`mt-1 flex items-center rounded-md border bg-[#0b1219] px-2 ${
-            isBuy
-              ? "border-emerald-500/20"
-              : "border-red-500/20"
+            isBuy ? "border-emerald-500/20" : "border-red-500/20"
           }`}
         >
           <input
@@ -297,12 +236,9 @@ export default function EasyBuySell() {
             className="h-8 min-w-0 flex-1 bg-transparent text-xs outline-none"
             placeholder="Enter amount"
           />
-
           <span
             className={`text-[9px] font-bold ${
-              isBuy
-                ? "text-emerald-400"
-                : "text-red-400"
+              isBuy ? "text-emerald-400" : "text-red-400"
             }`}
           >
             {isBuy ? "₹ INR" : selectedCoin}
@@ -310,28 +246,19 @@ export default function EasyBuySell() {
         </div>
       </div>
 
-      {/* You Receive */}
       <div className="mt-2">
         <label className="text-[9px] text-slate-400">
           You Receive ({isBuy ? selectedCoin : "INR"})
         </label>
-
         <div
           className={`mt-1 flex h-8 items-center justify-between rounded-md border bg-[#0b1219] px-2 text-xs ${
-            isBuy
-              ? "border-emerald-500/20"
-              : "border-red-500/20"
+            isBuy ? "border-emerald-500/20" : "border-red-500/20"
           }`}
         >
-          <span className="text-slate-400">
-            {receiveAmount}
-          </span>
-
+          <span className="text-slate-400">{receiveAmount}</span>
           <span
             className={`text-[9px] font-bold ${
-              isBuy
-                ? "text-emerald-400"
-                : "text-red-400"
+              isBuy ? "text-emerald-400" : "text-red-400"
             }`}
           >
             {isBuy ? selectedCoin : "INR"}
@@ -339,7 +266,6 @@ export default function EasyBuySell() {
         </div>
       </div>
 
-      {/* Balance */}
       {payAmount > 0 && (
         <p className="mt-1 text-[9px] text-slate-500">
           Available:{" "}
@@ -352,28 +278,23 @@ export default function EasyBuySell() {
                   : "text-red-400"
             }
           >
-            {availableBalance.toFixed(8)}{" "}
-            {isBuy ? "INR" : selectedCoin}
+            {availableBalance.toFixed(8)} {isBuy ? "INR" : selectedCoin}
           </span>
         </p>
       )}
 
-      {/* Insufficient balance */}
       {insufficientBalance && (
         <p className="mt-1 text-[9px] text-red-400">
-          Insufficient{" "}
-          {isBuy ? "INR" : selectedCoin} Balance
+          Insufficient {isBuy ? "INR" : selectedCoin} Balance
         </p>
       )}
 
-      {/* Price unavailable */}
       {price <= 0 && (
         <p className="mt-1 text-[9px] text-yellow-400">
           Price unavailable
         </p>
       )}
 
-      {/* Submit */}
       <button
         disabled={
           !amount ||
@@ -390,12 +311,9 @@ export default function EasyBuySell() {
             : "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400"
         }`}
       >
-        {submitting
-          ? "Submitting..."
-          : `Continue ${mode} ${selectedCoin}`}
+        {submitting ? "Submitting..." : `Continue ${mode} ${selectedCoin}`}
       </button>
 
-      {/* Message */}
       {message && (
         <p
           className={`mt-1 text-center text-[9px] ${
@@ -408,7 +326,6 @@ export default function EasyBuySell() {
         </p>
       )}
 
-      {/* Coin selector modal */}
       <CoinSelectorModal
         open={showCoinModal}
         onClose={() => setShowCoinModal(false)}
@@ -418,7 +335,6 @@ export default function EasyBuySell() {
         }}
       />
 
-      {/* Confirmation modal */}
       <OrderConfirmationModal
         open={showConfirm}
         coin={selectedCoin}
