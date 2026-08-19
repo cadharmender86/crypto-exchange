@@ -24,15 +24,20 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
-     # Login brute-force protection
+
+    # Login brute-force protection
     login_rate_limit_attempts: int = 5
     login_rate_limit_window_seconds: int = 60
-    
-    # internal_test_deposit_key: str
 
     # Development-only endpoint protection. Keep this out of source control
     # and provide it through backend/.env.
     internal_test_deposit_key: str
+
+    # Market-data configuration.
+    # Binance supplies crypto/USDT prices; the backend converts them to INR.
+    # Keep this configurable so the test environment can use a controlled
+    # INR conversion without exposing pricing configuration to the browser.
+    market_usdt_inr_rate: float = 88.0
 
     model_config = SettingsConfigDict(
         env_file=".env",
