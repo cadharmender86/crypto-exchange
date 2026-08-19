@@ -40,7 +40,6 @@ export default function BuySell() {
   const [selectedCoin, setSelectedCoin] = useState("BTC");
   const [orderType] = useState<"LIMIT">("LIMIT");
 
-  // BUY and SELL intentionally have completely independent form state.
   const [buyPriceInput, setBuyPriceInput] = useState("");
   const [buyAmountInput, setBuyAmountInput] = useState("");
   const [sellPriceInput, setSellPriceInput] = useState("");
@@ -93,15 +92,6 @@ export default function BuySell() {
     selectedAsset && inrAsset && sellPrice > 0 && sellAmount > 0 && sellAmount <= availableCoin,
   );
 
-  useEffect(() => {
-    const suggested = livePrice > 0 ? livePrice.toFixed(2) : "";
-    setBuyPriceInput(suggested);
-    setSellPriceInput(suggested);
-    setBuyAmountInput("");
-    setSellAmountInput("");
-    setMessage("");
-  }, [selectedCoin, livePrice]);
-
   async function loadOrders() {
     try {
       const data = await getOpenOrders();
@@ -112,10 +102,24 @@ export default function BuySell() {
   }
 
   useEffect(() => {
-    loadOrders();
-    const refresh = () => loadOrders();
+    let active = true;
+
+    const refresh = () => {
+      void getOpenOrders()
+        .then((data) => {
+          if (active) setOrders(Array.isArray(data) ? data : []);
+        })
+        .catch(() => {
+          if (active) setOrders([]);
+        });
+    };
+
+    refresh();
     window.addEventListener("order-created", refresh);
-    return () => window.removeEventListener("order-created", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("order-created", refresh);
+    };
   }, []);
 
   function setBuyMax() {
@@ -163,18 +167,23 @@ export default function BuySell() {
 
   function selectCoin(coin: string) {
     setSelectedCoin(coin);
+    const selectedTicker = ticker.find((item) => item.symbol === `${coin}INR`);
+    const suggested = Number(
+      selectedTicker?.price_inr ?? selectedTicker?.last_price ?? selectedTicker?.price ?? 0,
+    );
+    const price = suggested > 0 ? suggested.toFixed(2) : "";
+    setBuyPriceInput(price);
+    setSellPriceInput(price);
+    setBuyAmountInput("");
+    setSellAmountInput("");
+    setMessage("");
   }
 
   return (
     <main className="mx-auto max-w-[1400px] px-3 py-4 md:px-5">
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.06] bg-[#10161d] p-2">
         {coins.map((coin) => (
-          <button
-            key={coin}
-            type="button"
-            onClick={() => selectCoin(coin)}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold ${selectedCoin === coin ? "bg-white text-slate-900" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
-          >
+          <button key={coin} type="button" onClick={() => selectCoin(coin)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold ${selectedCoin === coin ? "bg-white text-slate-900" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}>
             <CoinIcon symbol={coin} size={24} /> {coin}/INR
           </button>
         ))}
@@ -184,14 +193,8 @@ export default function BuySell() {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.06] px-4 py-4">
           <div className="flex items-center gap-3">
             <CoinIcon symbol={selectedCoin} size={40} />
-            <div>
-              <h1 className="text-xl font-bold">{selectedCoin}/INR</h1>
-              <p className="text-sm text-slate-500">Spot Market</p>
-            </div>
-            <div className="ml-3">
-              <p className="text-2xl font-bold">₹ {money(livePrice)}</p>
-              <p className="text-sm text-emerald-400">+{Number(tickerData?.change_24h ?? 0).toFixed(2)}% 24h</p>
-            </div>
+            <div><h1 className="text-xl font-bold">{selectedCoin}/INR</h1><p className="text-sm text-slate-500">Spot Market</p></div>
+            <div className="ml-3"><p className="text-2xl font-bold">₹ {money(livePrice)}</p><p className="text-sm text-emerald-400">+{Number(tickerData?.change_24h ?? 0).toFixed(2)}% 24h</p></div>
           </div>
           <div className="grid grid-cols-3 gap-5 text-right text-sm">
             <div><p className="text-slate-500">24h High</p><p className="mt-1 font-semibold">₹ {money(Number(tickerData?.high_24h ?? 0))}</p></div>
@@ -217,49 +220,14 @@ export default function BuySell() {
 
         <div className="border-t border-white/[0.06] p-4">
           <div className="grid gap-5 md:grid-cols-2">
-            <OrderPanel
-              side="BUY"
-              coin={selectedCoin}
-              price={buyPriceInput}
-              amount={buyAmountInput}
-              total={buyTotal}
-              fee={buyFee}
-              finalValue={buyFinal}
-              available={availableINR}
-              onPriceChange={setBuyPriceInput}
-              onAmountChange={setBuyAmountInput}
-              onMax={setBuyMax}
-              onSubmit={() => submitOrder("BUY")}
-              submitting={submittingSide === "BUY"}
-              canSubmit={canBuy}
-              insufficient={buyTotal > 0 && buyFinal > availableINR}
-            />
-            <OrderPanel
-              side="SELL"
-              coin={selectedCoin}
-              price={sellPriceInput}
-              amount={sellAmountInput}
-              total={sellTotal}
-              fee={sellFee}
-              finalValue={sellFinal}
-              available={availableCoin}
-              onPriceChange={setSellPriceInput}
-              onAmountChange={setSellAmountInput}
-              onMax={setSellMax}
-              onSubmit={() => submitOrder("SELL")}
-              submitting={submittingSide === "SELL"}
-              canSubmit={canSell}
-              insufficient={sellAmount > availableCoin}
-            />
+            <OrderPanel side="BUY" coin={selectedCoin} price={buyPriceInput} amount={buyAmountInput} total={buyTotal} fee={buyFee} finalValue={buyFinal} available={availableINR} onPriceChange={setBuyPriceInput} onAmountChange={setBuyAmountInput} onMax={setBuyMax} onSubmit={() => submitOrder("BUY")} submitting={submittingSide === "BUY"} canSubmit={canBuy} insufficient={buyTotal > 0 && buyFinal > availableINR} />
+            <OrderPanel side="SELL" coin={selectedCoin} price={sellPriceInput} amount={sellAmountInput} total={sellTotal} fee={sellFee} finalValue={sellFinal} available={availableCoin} onPriceChange={setSellPriceInput} onAmountChange={setSellAmountInput} onMax={setSellMax} onSubmit={() => submitOrder("SELL")} submitting={submittingSide === "SELL"} canSubmit={canSell} insufficient={sellAmount > availableCoin} />
           </div>
-
           {message && <p className={`mt-3 text-center text-sm ${message.includes("successfully") ? "text-emerald-400" : "text-red-400"}`}>{message}</p>}
         </div>
 
         <div className="border-t border-white/[0.06] px-4 pt-2">
-          <div className="flex gap-6 overflow-x-auto text-sm font-semibold">
-            {["Open Orders", "Order History", "Trade History"].map((item) => <button key={item} type="button" onClick={() => setTab(item)} className={`border-b-2 px-2 py-3 ${tab === item ? "border-blue-400 text-white" : "border-transparent text-slate-500"}`}>{item}</button>)}
-          </div>
+          <div className="flex gap-6 overflow-x-auto text-sm font-semibold">{["Open Orders", "Order History", "Trade History"].map((item) => <button key={item} type="button" onClick={() => setTab(item)} className={`border-b-2 px-2 py-3 ${tab === item ? "border-blue-400 text-white" : "border-transparent text-slate-500"}`}>{item}</button>)}</div>
           <div className="min-h-[90px] py-5 text-sm text-slate-400">
             {tab === "Open Orders" && (orders.length ? orders.slice(0, 5).map((order) => <div key={order.id} className="flex justify-between border-b border-white/[0.05] py-2"><span>{order.symbol || `${selectedCoin}/INR`}</span><span>{order.side}</span><span>{order.status}</span><span>{order.amount || order.quantity}</span></div>) : "No open orders")}
             {tab === "Order History" && "Order history will appear here after completed or cancelled orders."}
@@ -271,37 +239,18 @@ export default function BuySell() {
   );
 }
 
-type OrderPanelProps = {
-  side: "BUY" | "SELL";
-  coin: string;
-  price: string;
-  amount: string;
-  total: number;
-  fee: number;
-  finalValue: number;
-  available: number;
-  onPriceChange: (value: string) => void;
-  onAmountChange: (value: string) => void;
-  onMax: () => void;
-  onSubmit: () => void;
-  submitting: boolean;
-  canSubmit: boolean;
-  insufficient: boolean;
-};
+type OrderPanelProps = { side: "BUY" | "SELL"; coin: string; price: string; amount: string; total: number; fee: number; finalValue: number; available: number; onPriceChange: (value: string) => void; onAmountChange: (value: string) => void; onMax: () => void; onSubmit: () => void; submitting: boolean; canSubmit: boolean; insufficient: boolean };
 
 function OrderPanel({ side, coin, price, amount, total, fee, finalValue, available, onPriceChange, onAmountChange, onMax, onSubmit, submitting, canSubmit, insufficient }: OrderPanelProps) {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-[#0b1118] p-4">
       <div className="mb-4 flex items-center justify-between"><h2 className={`text-base font-bold ${side === "BUY" ? "text-emerald-400" : "text-red-400"}`}>{side}</h2><span className="text-xs text-slate-500">Available {side === "BUY" ? "INR" : coin}: {available.toFixed(8)}</span></div>
       <div className="mb-3 grid grid-cols-2 rounded-lg bg-[#17202b] p-1 text-sm font-bold"><button type="button" disabled className="cursor-not-allowed rounded py-2 text-slate-600">Market</button><button type="button" className="rounded bg-white py-2 text-slate-900">Limit</button></div>
-
       <label className="mb-2 block text-xs text-slate-500">Limit Price (INR)<input type="number" min="0" step="0.01" value={price} onChange={(e) => onPriceChange(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-[#070c12] px-3 text-sm text-white outline-none focus:border-blue-500/50" placeholder="Enter limit price" /></label>
       <label className="mb-2 block text-xs text-slate-500">Quantity ({coin})<div className="mt-1 flex rounded-lg border border-white/10 bg-[#070c12]"><input type="number" min="0" step="any" value={amount} onChange={(e) => onAmountChange(e.target.value)} className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none" placeholder={`Enter ${coin} quantity`} /><button type="button" onClick={onMax} className="px-3 text-xs font-bold text-blue-400">MAX</button></div></label>
-
       <div className="mb-2 text-xs text-slate-500">Total (INR)<div className="mt-1 flex h-10 items-center rounded-lg border border-white/10 bg-[#070c12] px-3 text-sm font-semibold text-white">₹ {money(total)}</div></div>
       <div className="mb-2 flex justify-between text-xs text-slate-500"><span>Fee ({FEE_PERCENT}%)</span><span>₹ {money(fee)}</span></div>
       <div className="mb-3 flex justify-between text-xs text-slate-400"><span>{side === "BUY" ? "You Pay" : "You Receive"}</span><span className="font-semibold text-white">₹ {money(finalValue)}</span></div>
-
       {insufficient && <p className="mb-2 text-xs text-red-400">Insufficient {side === "BUY" ? "INR" : coin} balance</p>}
       <button type="button" onClick={onSubmit} disabled={!canSubmit || submitting} className={`w-full rounded-lg py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 ${side === "BUY" ? "bg-emerald-500 hover:bg-emerald-400" : "bg-red-500 hover:bg-red-400"}`}>{submitting ? "Placing..." : `${side} ${coin}`}</button>
     </div>
