@@ -1,5 +1,23 @@
 services:
 
+  backend:
+    image: dharmu86/bitnova-backend:0.1.0
+    container_name: bitnova-backend
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+
   postgres:
     image: postgres:17
     container_name: bitnova-postgres
