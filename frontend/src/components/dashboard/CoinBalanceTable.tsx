@@ -4,7 +4,7 @@ import CoinIcon from "@/components/common/CoinIcon";
 import { useWallet } from "@/hooks/useWallet";
 
 type CoinBalance = {
-  symbol: string;
+  symbol?: string | null;
   balance: string;
   netCost?: number;
   value?: number;
@@ -22,7 +22,7 @@ export default function CoinBalanceTable({
 
   const coins: CoinBalance[] = assets.length
     ? assets.map((coin: any) => ({
-        symbol: coin.symbol,
+        symbol: coin.symbol ?? coin.asset ?? coin.currency ?? null,
         balance: coin.balance || "0",
         netCost: coin.netCost || 0,
         value: coin.value || 0,
@@ -57,15 +57,11 @@ export default function CoinBalanceTable({
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Coin Balance</h2>
 
-        <button className="text-sm text-blue-400">
-          View All
-        </button>
+        <button className="text-sm text-blue-400">View All</button>
       </div>
 
       {loading && (
-        <p className="mb-3 text-sm text-gray-400">
-          Loading assets...
-        </p>
+        <p className="mb-3 text-sm text-gray-400">Loading assets...</p>
       )}
 
       <div className="overflow-x-auto">
@@ -82,20 +78,16 @@ export default function CoinBalanceTable({
           </thead>
 
           <tbody>
-            {coins.map((coin) => (
+            {coins.map((coin, index) => (
               <tr
-                key={coin.symbol}
+                key={`${coin.symbol ?? "unknown"}-${index}`}
                 className="border-b border-white/10 text-white hover:bg-white/5"
               >
                 <td className="p-3">
                   <div className="flex items-center gap-3">
-                    <CoinIcon
-                      symbol={coin.symbol}
-                      size={34}
-                    />
-
+                    <CoinIcon symbol={coin.symbol} size={34} />
                     <span className="font-semibold">
-                      {coin.symbol}
+                      {coin.symbol || "Unknown"}
                     </span>
                   </div>
                 </td>
@@ -107,9 +99,7 @@ export default function CoinBalanceTable({
                 </td>
 
                 <td className="p-3">
-                  {showBalance
-                    ? coin.balance
-                    : "••••••"}
+                  {showBalance ? coin.balance : "••••••"}
                 </td>
 
                 <td className="p-3 font-semibold">
@@ -120,9 +110,7 @@ export default function CoinBalanceTable({
 
                 <td
                   className={`p-3 ${
-                    showBalance
-                      ? "text-green-400"
-                      : "text-slate-500"
+                    showBalance ? "text-green-400" : "text-slate-500"
                   }`}
                 >
                   {showBalance ? coin.change : "••••"}
@@ -133,7 +121,6 @@ export default function CoinBalanceTable({
                     <button className="rounded-md bg-blue-600 px-3 py-1 text-xs">
                       Deposit
                     </button>
-
                     <button className="rounded-md border border-white/20 px-3 py-1 text-xs">
                       Withdraw
                     </button>
