@@ -86,39 +86,59 @@ class BinanceMarketService:
     async def _handle_message(self, raw_message: str | bytes) -> None:
         message = json.loads(raw_message)
         data = message.get("data", message)
-        symbol = str(data.get("s", "")).upper()
-        if not symbol:
+        source_symbol = str(data.get("s", "")).upper()
+        if not source_symbol:
             return
 
         usdt_price = float(data.get("c", 0))
         usdt_inr_rate = settings.market_usdt_inr_rate
+        inr_price = usdt_price * usdt_inr_rate
 
-        item = {
-            "symbol": symbol,
-            "price": usdt_price,
-            "last_price": usdt_price,
+        common = {
             "price_usdt": usdt_price,
-            "price_inr": usdt_price * usdt_inr_rate,
+            "price_inr": inr_price,
             "usdt_inr_rate": usdt_inr_rate,
-            "quote_currency": "USDT",
+            "quote_currency": "INR",
             "change_24h": float(data.get("P", 0)),
             "high_24h": float(data.get("h", 0)),
             "low_24h": float(data.get("l", 0)),
             "volume_24h": float(data.get("v", 0)),
             "source": "BINANCE",
         }
-        self._latest[symbol] = item
 
-        for queue in tuple(self._subscribers):
-            if queue.full():
+        usdt_item = {
+            "symbol": source_symbol,
+            "price": usdt_price,
+            "last_price": usdt_price,
+            **common,
+            "quote_currency": "USDT",
+        }
+
+        base_symbol = source_symbol.removesuffix("USDT")
+        inr_symbol = f"{base_symbol}INR"
+        inr_item = {
+            "symbol": inr_symbol,
+            "price": inr_price,
+            "last_price": inr_price,
+            **common,
+            "quote_currency": "INR",
+            "source": "BINANCE+INR_RATE",
+        }
+
+        self._latest[source_symbol] = usdt_item
+        self._latest[inr_symbol] = inr_item
+
+        for item in (usdt_item, inr_item):
+            for queue in tuple(self._subscribers):
+                if queue.full():
+                    try:
+                        queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        pass
                 try:
-                    queue.get_nowait()
-                except asyncio.QueueEmpty:
+                    queue.put_nowait(item)
+                except asyncio.QueueFull:
                     pass
-            try:
-                queue.put_nowait(item)
-            except asyncio.QueueFull:
-                pass
 
 
 binance_market_service = BinanceMarketService()
