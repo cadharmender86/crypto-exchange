@@ -10,6 +10,7 @@ import { createOrder } from "@/services/order.service";
 
 const defaultCoins = ["USDT", "BTC", "ETH", "SOL"];
 const TRADING_FEE_PERCENT = 0.1;
+const FEE_MULTIPLIER = 1 + TRADING_FEE_PERCENT / 100;
 
 export default function EasyBuySell() {
   const { assets = [], ticker = [] } = useMarket();
@@ -25,7 +26,6 @@ export default function EasyBuySell() {
 
   const isBuy = mode === "BUY";
 
-  // Only show tradable crypto assets, never INR in the coin selector.
   const coins = assets.length
     ? assets
         .filter(
@@ -52,8 +52,6 @@ export default function EasyBuySell() {
     (account) => account.asset_id === inrAsset?.id,
   );
 
-  // The backend publishes the normalized INR ticker (for example BTCINR).
-  // Do not calculate or hard-code an INR conversion rate in the browser.
   const selectedTicker = useMemo(
     () =>
       ticker.find(
@@ -71,15 +69,12 @@ export default function EasyBuySell() {
 
   const payAmount = Number(amount || 0);
 
-  // BUY: INR entered -> crypto quantity.
-  // SELL: crypto entered -> crypto quantity.
   const quantity = isBuy
     ? price > 0
       ? payAmount / price
       : 0
     : payAmount;
 
-  // BUY: crypto received. SELL: INR received.
   const receiveAmount =
     price > 0 && payAmount > 0
       ? isBuy
@@ -99,11 +94,31 @@ export default function EasyBuySell() {
     ? Number(inrAccount?.available_balance ?? 0)
     : Number(selectedAccount?.available_balance ?? 0);
 
+  // Maximum amount the user can enter without exceeding the available balance.
+  // For BUY, leave enough room for the trading fee.
+  const maxAmount = isBuy
+    ? availableBalance / FEE_MULTIPLIER
+    : availableBalance;
+
   const insufficientBalance =
     payAmount > 0 &&
     requiredBalance > availableBalance;
 
   const missingAssets = !selectedAsset || !inrAsset;
+
+  function setMaxAmount() {
+    if (maxAmount <= 0) {
+      setAmount("");
+      return;
+    }
+
+    setAmount(
+      isBuy
+        ? maxAmount.toFixed(2)
+        : maxAmount.toFixed(8),
+    );
+    setMessage("");
+  }
 
   async function handleConfirmOrder() {
     setSubmitting(true);
@@ -166,6 +181,7 @@ export default function EasyBuySell() {
             onClick={() => {
               setSelectedCoin(coin);
               setMessage("");
+              setAmount("");
             }}
             className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold ${
               selectedCoin === coin
@@ -191,6 +207,7 @@ export default function EasyBuySell() {
           onClick={() => {
             setMode("BUY");
             setMessage("");
+            setAmount("");
           }}
           className={`rounded py-1.5 transition ${
             isBuy
@@ -204,6 +221,7 @@ export default function EasyBuySell() {
           onClick={() => {
             setMode("SELL");
             setMessage("");
+            setAmount("");
           }}
           className={`rounded py-1.5 transition ${
             !isBuy
@@ -216,9 +234,23 @@ export default function EasyBuySell() {
       </div>
 
       <div className="mt-2">
-        <label className="text-[9px] text-slate-400">
-          You Pay ({isBuy ? "INR" : selectedCoin})
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-[9px] text-slate-400">
+            You Pay ({isBuy ? "INR" : selectedCoin})
+          </label>
+          {availableBalance > 0 && (
+            <button
+              type="button"
+              onClick={setMaxAmount}
+              className={`text-[9px] font-bold ${
+                isBuy ? "text-emerald-400" : "text-red-400"
+              }`}
+            >
+              MAX
+            </button>
+          )}
+        </div>
+
         <div
           className={`mt-1 flex items-center rounded-md border bg-[#0b1219] px-2 ${
             isBuy ? "border-emerald-500/20" : "border-red-500/20"
@@ -227,6 +259,7 @@ export default function EasyBuySell() {
           <input
             type="number"
             min="0"
+            max={maxAmount > 0 ? maxAmount : undefined}
             step="any"
             value={amount}
             onChange={(e) => {
@@ -269,15 +302,7 @@ export default function EasyBuySell() {
       {payAmount > 0 && (
         <p className="mt-1 text-[9px] text-slate-500">
           Available:{" "}
-          <span
-            className={
-              insufficientBalance
-                ? "text-red-400"
-                : isBuy
-                  ? "text-emerald-400"
-                  : "text-red-400"
-            }
-          >
+          <span className={insufficientBalance ? "text-red-400" : "text-slate-300"}>
             {availableBalance.toFixed(8)} {isBuy ? "INR" : selectedCoin}
           </span>
         </p>
@@ -332,6 +357,7 @@ export default function EasyBuySell() {
         onSelect={(coin) => {
           setSelectedCoin(coin);
           setMessage("");
+          setAmount("");
         }}
       />
 
