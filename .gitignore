@@ -37,6 +37,9 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
+#Database backups
+bitnova_backup.sql
+
 # Build
 build/
 dist/
@@ -46,3 +49,9 @@ dist/
 *.tmp
 *.temp
 *.tsbuildinfo
+
+# Generated API schema
+openapi.json
+
+*.sql
+openapi.json

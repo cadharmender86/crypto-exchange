@@ -62,15 +62,31 @@ class EthereumDepositMonitor:
         method: str,
         params: list[Any],
     ) -> Any:
-        response = await client.post(
-            self.rpc_url,
-            json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if payload.get("error"):
-            raise EthereumRpcError(str(payload["error"]))
-        return payload.get("result")
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params,
+        }
+
+        logger.info("RPC REQUEST %s -> %s", method, payload)
+
+        response = await client.post(self.rpc_url, json=payload)
+
+        try:
+            body = response.json()
+        except Exception:
+            body = response.text
+
+        logger.info("RPC RESPONSE %s -> HTTP %s %s", method, response.status_code, body)
+
+        if response.status_code != 200:
+            raise EthereumRpcError(f"HTTP {response.status_code}: {body}")
+
+        if isinstance(body, dict) and body.get("error"):
+            raise EthereumRpcError(str(body["error"]))
+
+        return body.get("result")
 
     async def latest_block(self, client: httpx.AsyncClient) -> int:
         result = await self._rpc(client, "eth_blockNumber", [])
@@ -97,7 +113,7 @@ class EthereumDepositMonitor:
                         "fromBlock": hex(start),
                         "toBlock": hex(end),
                         "address": self.contract_address,
-                        "topics": [TRANSFER_TOPIC, None, address_topics],
+                        "topics": [TRANSFER_TOPIC],
                     }
                 ],
             )
@@ -167,8 +183,11 @@ class EthereumDepositMonitor:
         topics = log.get("topics") or []
         if len(topics) < 3:
             return
+        to_topic = topics[2]
+        if not isinstance(to_topic, str) or len(to_topic) !=66:
+            return
 
-        to_address = "0x" + topics[2][-40:]
+        to_address = "0x" + to_topic[-40:]
         wallet_address = address_map.get(to_address.lower())
         if wallet_address is None:
             return

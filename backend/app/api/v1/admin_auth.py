@@ -23,7 +23,7 @@ from app.models.admin import (
 from app.schemas.auth import RefreshTokenRequest, TokenResponse
 
 router = APIRouter(prefix="/admin/auth", tags=["Admin Authentication"])
-admin_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/admin/auth/login")
+admin_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/admin/auth/login", scheme_name="AdminOAuth2PasswordBearer",)
 MAX_FAILED_LOGINS = 5
 
 
