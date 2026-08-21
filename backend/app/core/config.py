@@ -42,14 +42,40 @@ class Settings(BaseSettings):
     # Ethereum deposit monitoring. RPC URLs and token contracts are supplied
     # through backend/.env; secrets and provider credentials never belong in
     # source control.
-    ethereum_sepolia_rpc_url: str = ""
-    ethereum_sepolia_usdt_contract: str = ""
+    # ----------------------------------------------------
+    # Ethereum / Sepolia (Shared Configuration)
+    # ----------------------------------------------------
+
+    ethereum_sepolia_rpc_url: str
     ethereum_sepolia_network: str = "ETHEREUM_SEPOLIA"
+    ethereum_sepolia_chain_id: int = 11155111
+
+    # ERC20 Contracts
+    ethereum_sepolia_usdt_contract: str
+    ethereum_sepolia_bitnova_contract: str
+
+    # Asset symbols
     ethereum_sepolia_asset_symbol: str = "USDT"
+    ethereum_sepolia_bitnova_asset_symbol: str = "BITNOVA"
+
+    # Treasury wallet (used only by withdrawal broadcaster)
+    ethereum_sepolia_treasury_address: str
+    ethereum_sepolia_treasury_private_key: str
+
+    # ----------------------------------------------------
+    # Deposit Monitor Configuration
+    # ----------------------------------------------------
     ethereum_deposit_required_confirmations: int = 3
-    ethereum_deposit_poll_seconds: int = 15
+    ethereum_deposit_poll_seconds: int = 10
     ethereum_deposit_lookback_blocks: int = 200
     ethereum_deposit_log_chunk_size: int = 50
+
+    # ----------------------------------------------------
+    # Withdrawal Broadcaster Configuration
+    # ----------------------------------------------------
+    ethereum_withdrawal_poll_seconds: int = 10
+    ethereum_withdrawal_gas_limit: int = 60000
+    ethereum_withdrawal_max_retries: int = 3
 
     model_config = SettingsConfigDict(
         env_file=".env",

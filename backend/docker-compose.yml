@@ -11,6 +11,9 @@ services:
     env_file:
       - .env
 
+    volumes:
+      - ./app:/app/app
+
     ports:
       - "8000:8000"
 
@@ -25,6 +28,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - ./app:/app/app  
     image: bitnova-backend:dev
     container_name: bitnova-ethereum-deposit-monitor
     restart: unless-stopped
@@ -38,6 +43,45 @@ services:
       postgres:
         condition: service_healthy
 
+  ethereum-withdrawal-broadcaster:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bitnova-backend:dev
+    container_name: bitnova-ethereum-withdrawal-broadcaster
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./app:/app/app
+
+    command: ["python", "-m", "app.services.ethereum_withdrawal_broadcaster"]
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ethereum-withdrawal-confirmation-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bitnova-backend:dev
+    container_name: bitnova-ethereum-withdrawal-confirmation-monitor
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./app:/app/app
+
+    command: ["python", "-m", "app.services.ethereum_withdrawal_confirmation_monitor"]
+
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:17

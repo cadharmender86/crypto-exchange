@@ -15,6 +15,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 
+from enum import Enum
+
+
+class WithdrawalStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    BROADCASTING = "BROADCASTING"
+    BROADCASTED = "BROADCASTED"
+    PENDING_CONFIRMATION = "PENDING_CONFIRMATION"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
 
 class Withdrawal(Base):
     __tablename__ = "withdrawals"
@@ -71,10 +84,27 @@ class Withdrawal(Base):
     )
 
     status: Mapped[str] = mapped_column(
-        String(20),
+        String(30),
         nullable=False,
-        default="PENDING",
+        default=WithdrawalStatus.PENDING.value,
         index=True,
+    )
+
+    blockchain_tx_hash: Mapped[str | None] = mapped_column(
+        String(66),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+
+    confirmations: Mapped[int] = mapped_column(
+        default=0,
+        nullable=False,
+    )
+    
+    failure_reason: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
     )
 
     idempotency_key: Mapped[str] = mapped_column(
@@ -89,6 +119,16 @@ class Withdrawal(Base):
         index=True,
     )
 
+    broadcasted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

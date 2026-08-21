@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -6,26 +7,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.account import Account
 from app.models.asset import Asset
-from app.models.withdrawal import Withdrawal
+from app.models.withdrawal import Withdrawal, WithdrawalStatus
 from app.services.balance_service import BalanceService
 from app.services.ledger_service import LedgerService
 
-
 class WithdrawalService:
-    """Provider-independent withdrawal creation and internal settlement.
-
-    The service deliberately does not commit. The caller owns the database
-    transaction so the withdrawal, balance lock, and ledger entries are
-    committed or rolled back atomically.
     """
+    Withdrawal lifecycle service.
 
-    PENDING = "PENDING"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
+    This service only mutates database state.
+    The caller is responsible for commit/rollback.
+    """
 
     SYSTEM_ACCOUNT_TYPE = "SYSTEM_TREASURY"
     CUSTOMER_ACCOUNT_TYPE = "CUSTOMER"
-
     @staticmethod
     async def create_pending_withdrawal(
         db: AsyncSession,
@@ -153,6 +148,12 @@ class WithdrawalService:
 
         BalanceService._validate_account(treasury)
 
+        # Treasury must have enough available balance before a withdrawal
+        if treasury.available_balance < amount:
+            raise ValueError(
+                "System treasury has insufficient balance for withdrawal"
+            )
+
         # --------------------------------------------------------
         # Create withdrawal
         # --------------------------------------------------------
@@ -164,7 +165,7 @@ class WithdrawalService:
             network=network,
             destination_address=destination_address,
             amount=amount,
-            status=WithdrawalService.PENDING,
+            status=WithdrawalStatus.PENDING.value,
             idempotency_key=idempotency_key,
         )
 
@@ -198,6 +199,120 @@ class WithdrawalService:
         )
 
         withdrawal.ledger_transaction_id = transaction.id
+
+        await db.flush()
+
+        return withdrawal
+
+
+    @staticmethod
+    async def approve_withdrawal(
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+    ) -> Withdrawal:
+
+        if withdrawal.status != WithdrawalStatus.PENDING.value:
+            raise ValueError("Only pending withdrawals can be approved")
+
+        withdrawal.status = WithdrawalStatus.APPROVED.value
+
+        await db.flush()
+
+        return withdrawal
+
+
+    @staticmethod
+    async def mark_broadcasting(
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+    ) -> Withdrawal:
+
+        if withdrawal.status != WithdrawalStatus.APPROVED.value:
+            raise ValueError("Withdrawal must be approved before broadcasting")
+
+        withdrawal.status = WithdrawalStatus.BROADCASTING.value
+
+        await db.flush()
+
+        return withdrawal
+
+
+    @staticmethod
+    async def mark_broadcasted(
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+        tx_hash: str,
+    ) -> Withdrawal:
+
+        withdrawal.status = WithdrawalStatus.BROADCASTED.value
+        withdrawal.blockchain_tx_hash = tx_hash.lower()
+        withdrawal.failure_reason = None
+        withdrawal.confirmations = 0
+        withdrawal.broadcasted_at = datetime.now(timezone.utc)
+
+        await db.flush()
+
+        return withdrawal
+
+    @staticmethod
+    async def mark_failed(
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+        reason: str,
+    ) -> Withdrawal:
+        """
+        Mark a withdrawal as failed during blockchain broadcast.
+        """
+
+        withdrawal.status = WithdrawalStatus.FAILED.value
+        withdrawal.failure_reason = reason[:255]
+
+        await db.flush()
+
+        return withdrawal
+
+    @staticmethod
+    async def approve_by_admin(
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+    ) -> Withdrawal:
+        """
+        Approve a pending withdrawal.
+        """
+
+        if withdrawal.status != WithdrawalStatus.PENDING.value:
+            raise ValueError(
+                f"Withdrawal is already {withdrawal.status.lower()}"
+            )
+
+        withdrawal.status = WithdrawalStatus.APPROVED.value
+
+        await db.flush()
+
+        return withdrawal
+
+    @staticmethod
+    async def reject_by_admin(
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+    ) -> Withdrawal:
+        """
+        Reject a pending withdrawal and unlock customer funds.
+        """
+
+        if withdrawal.status != WithdrawalStatus.PENDING.value:
+            raise ValueError(
+                f"Withdrawal is already {withdrawal.status.lower()}"
+            )
+
+        account = await BalanceService.get_locked_account(
+            db,
+            withdrawal.account_id,
+        )
+
+        await BalanceService.unlock(account, withdrawal.amount)
+
+        withdrawal.status = WithdrawalStatus.REJECTED.value
 
         await db.flush()
 

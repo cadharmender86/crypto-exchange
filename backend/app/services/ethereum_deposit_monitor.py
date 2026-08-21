@@ -33,16 +33,29 @@ class EthereumDepositMonitor:
     DepositService. It never mutates balances directly.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
+        # Ethereum JSON-RPC endpoint
         self.rpc_url = settings.ethereum_sepolia_rpc_url.strip()
-        self.contract_address = settings.ethereum_sepolia_usdt_contract.strip().lower()
-        self.network = settings.ethereum_sepolia_network.strip().upper()
-        self.asset_symbol = settings.ethereum_sepolia_asset_symbol.strip().upper()
-        self.required_confirmations = settings.ethereum_deposit_required_confirmations
+
+        # ERC20 token contract monitored for deposits
+        self.contract_address = (
+            settings.ethereum_sepolia_usdt_contract.strip().lower()
+        )
+
+        # Network metadata
+        self.network = (
+            settings.ethereum_sepolia_network.strip().upper()
+        )
+        self.asset_symbol = (
+            settings.ethereum_sepolia_asset_symbol.strip().upper()
+        )
+
+        # Deposit monitor configuration
+        self.required_confirmations = (settings.ethereum_deposit_required_confirmations)
         self.poll_seconds = settings.ethereum_deposit_poll_seconds
         self.lookback_blocks = settings.ethereum_deposit_lookback_blocks
         self.chunk_size = settings.ethereum_deposit_log_chunk_size
-
+        
         if not self.rpc_url:
             raise ValueError("ETHEREUM_SEPOLIA_RPC_URL is required")
         if not self.contract_address:

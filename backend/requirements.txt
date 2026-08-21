@@ -19,3 +19,6 @@ passlib[bcrypt]>=1.7.4,<2.0
 python-multipart>=0.0.20,<1.0
 bcrypt==4.3.0
 websockets>=15,<16
+web3==7.13.0
+eth-account==0.13.7
+eth-abi==5.2.0
