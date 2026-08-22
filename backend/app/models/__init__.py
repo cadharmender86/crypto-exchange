@@ -40,6 +40,12 @@ from app.models.admin import (
     AuditLog,
 )
 
+from app.models.bank_account import (
+    BankAccount,
+    BankAccountType,
+    BankAccountStatus,
+)
+
 # Utilities
 from app.models.idempotency import IdempotencyRecord
 
@@ -64,6 +70,11 @@ __all__ = [
     # Crypto Ledger
     "LedgerTransaction",
     "LedgerEntry",
+
+    #Bank Account
+    "BankAccount",
+    "BankAccountStatus",
+    "BankAccountType",
 
     # Fiat Ledger
     "FiatTransaction",
