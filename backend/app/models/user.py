@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import (
     Base,
@@ -51,4 +51,71 @@ class User(
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+
+    # -----------------------------
+    # Wallet Relationships
+    # -----------------------------
+
+    accounts: Mapped[list["Account"]] = relationship(
+        "Account",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    fiat_accounts: Mapped[list["FiatAccount"]] = relationship(
+        "FiatAccount",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    fiat_transactions: Mapped[list["FiatTransaction"]] = relationship(
+        "FiatTransaction",
+        back_populates="user",
+        lazy="selectin",
+        order_by="FiatTransaction.created_at.desc()",
+    )
+
+    wallet_addresses: Mapped[list["WalletAddress"]] = relationship(
+        "WalletAddress",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    deposits: Mapped[list["Deposit"]] = relationship(
+        "Deposit",
+        back_populates="user",
+        lazy="selectin",
+        order_by="Deposit.created_at.desc()",
+    )
+
+    withdrawals: Mapped[list["Withdrawal"]] = relationship(
+        "Withdrawal",
+        back_populates="user",
+        lazy="selectin",
+        order_by="Withdrawal.created_at.desc()",
+    )
+
+    orders: Mapped[list["Order"]] = relationship(
+        "Order",
+        back_populates="user",
+        lazy="selectin",
+        order_by="Order.created_at.desc()",
+    )
+
+    trades: Mapped[list["Trade"]] = relationship(
+        "Trade",
+        back_populates="user",
+        lazy="selectin",
+    )
+
+    bank_accounts: Mapped[list["BankAccount"]] = relationship(
+        "BankAccount",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="Trade.created_at.desc()",
     )
