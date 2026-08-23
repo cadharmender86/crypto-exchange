@@ -13,6 +13,8 @@ services:
 
     volumes:
       - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
 
     ports:
       - "8000:8000"
@@ -29,7 +31,9 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./app:/app/app  
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
     image: bitnova-backend:dev
     container_name: bitnova-ethereum-deposit-monitor
     restart: unless-stopped
@@ -56,6 +60,8 @@ services:
 
     volumes:
       - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
 
     command: ["python", "-m", "app.services.ethereum_withdrawal_broadcaster"]
 
