@@ -11,7 +11,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -23,11 +23,11 @@ class WithdrawalStatus(str, Enum):
     APPROVED = "APPROVED"
     BROADCASTING = "BROADCASTING"
     BROADCASTED = "BROADCASTED"
-    PENDING_CONFIRMATION = "PENDING_CONFIRMATION"
+    # PENDING_CONFIRMATION = "PENDING_CONFIRMATION"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     REJECTED = "REJECTED"
-    CANCELLED = "CANCELLED"
+    # CANCELLED = "CANCELLED"
 
 class Withdrawal(Base):
     __tablename__ = "withdrawals"
@@ -141,3 +141,22 @@ class Withdrawal(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    # -----------------------------
+    # Relationships
+    # -----------------------------
+
+    user = relationship(
+        "User",
+        back_populates="withdrawals",
+    )
+
+    asset = relationship(
+        "Asset",
+        back_populates="withdrawals",
+    )
+
+    ledger_transaction = relationship(
+        "LedgerTransaction",
+        back_populates="withdrawals",
+    )    

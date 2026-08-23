@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -42,3 +42,36 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # -----------------------------
+    # Relationships
+    # -----------------------------
+
+    user = relationship(
+        "User",
+        back_populates="orders",
+    )
+
+    base_asset = relationship(
+        "Asset",
+        foreign_keys=[base_asset_id],
+        back_populates="base_orders",
+    )
+
+    quote_asset = relationship(
+        "Asset",
+        foreign_keys=[quote_asset_id],
+        back_populates="quote_orders"
+    )
+
+    buy_trades = relationship(
+        "Trade",
+        foreign_keys="Trade.buy_order_id",
+        back_populates="buy_order",
+    )
+
+    sell_trades = relationship(
+        "Trade",
+        foreign_keys="Trade.sell_order_id",
+        back_populates="sell_order",
+    )

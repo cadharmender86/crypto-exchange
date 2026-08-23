@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -17,7 +17,7 @@ class LedgerEntry(Base):
         default=uuid4,
     )
 
-    transaction_id: Mapped[UUID] = mapped_column(
+    ledger_transaction_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(
             "ledger_transactions.id",
@@ -25,6 +25,11 @@ class LedgerEntry(Base):
         ),
         nullable=False,
         index=True,
+    )
+
+    ledger_transaction: Mapped["LedgerTransaction"] = relationship(
+        "LedgerTransaction",
+        back_populates="ledger_entries",
     )
 
     account_id: Mapped[UUID] = mapped_column(

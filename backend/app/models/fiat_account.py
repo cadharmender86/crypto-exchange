@@ -59,7 +59,11 @@ class FiatAccount(
     )
 
     status: Mapped[FiatAccountStatus] = mapped_column(
-        SqlEnum(FiatAccountStatus),
+        SqlEnum(
+            FiatAccountStatus,
+            name="fiataccountstatus",
+            create_type=True,
+        ),
         default=FiatAccountStatus.ACTIVE,
         nullable=False,
     )

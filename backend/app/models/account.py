@@ -11,7 +11,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -82,4 +82,14 @@ class Account(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    user = relationship(
+        "User",
+        back_populates="accounts",
+    )
+
+    asset = relationship(
+        "Asset",
+        back_populates="accounts",
     )

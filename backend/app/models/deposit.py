@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -100,4 +100,27 @@ class Deposit(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+    # -----------------------------
+    # Relationships
+    # -----------------------------
+
+    user = relationship(
+        "User",
+        back_populates="deposits",
+    )
+
+    wallet_address = relationship(
+        "WalletAddress",
+        back_populates="deposits",
+    )
+
+    asset = relationship(
+        "Asset",
+        back_populates="deposits",
+    )
+
+    ledger_transaction = relationship(
+        "LedgerTransaction",
+        back_populates="deposits",
     )

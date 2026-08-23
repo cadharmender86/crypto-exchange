@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -45,4 +45,23 @@ class LedgerTransaction(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+
+    deposits: Mapped[list["Deposit"]] = relationship(
+        "Deposit",
+        back_populates="ledger_transaction",
+        lazy="selectin",
+    )
+
+    withdrawals: Mapped[list["Withdrawal"]] = relationship(
+        "Withdrawal",
+        back_populates="ledger_transaction",
+        lazy="selectin",
+    )
+
+    ledger_entries: Mapped[list["LedgerEntry"]] = relationship(
+        "LedgerEntry",
+        back_populates="ledger_transaction",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
