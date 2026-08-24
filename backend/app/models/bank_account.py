@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
+from sqlalchemy import DateTime
 from sqlalchemy import Boolean, Enum as SqlEnum
 from sqlalchemy import ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -88,10 +89,18 @@ class BankAccount(
     )
 
     verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
         nullable=True,
     )
 
     user: Mapped["User"] = relationship(
         "User",
         back_populates="bank_accounts",
+    )
+
+    fiat_deposits: Mapped[list["FiatDeposit"]] = relationship(
+        "FiatDeposit",
+        back_populates="bank_account",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )

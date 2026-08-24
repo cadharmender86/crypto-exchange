@@ -51,12 +51,14 @@ class LedgerTransaction(Base):
         "Deposit",
         back_populates="ledger_transaction",
         lazy="selectin",
+        order_by="Deposit.created_at.desc()",
     )
 
     withdrawals: Mapped[list["Withdrawal"]] = relationship(
         "Withdrawal",
         back_populates="ledger_transaction",
         lazy="selectin",
+        order_by="Withdrawal.created_at.desc()",
     )
 
     ledger_entries: Mapped[list["LedgerEntry"]] = relationship(
@@ -64,4 +66,11 @@ class LedgerTransaction(Base):
         back_populates="ledger_transaction",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+
+    fiat_deposits: Mapped[list["FiatDeposit"]] = relationship(
+        "FiatDeposit",
+        back_populates="ledger_transaction",
+        lazy="selectin",
+        order_by="FiatDeposit.created_at.desc()",
     )

@@ -106,18 +106,12 @@ class User(
         order_by="Order.created_at.desc()",
     )
 
-    # trades: Mapped[list["Trade"]] = relationship(
-    #     "Trade",
-    #     back_populates="user",
-    #     lazy="selectin",
-    # )
-
     bank_accounts: Mapped[list["BankAccount"]] = relationship(
         "BankAccount",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",
-        order_by="Trade.created_at.desc()",
+        order_by="BankAccount.created_at.desc()",
     )
 
     buy_trades: Mapped[list["Trade"]] = relationship(
@@ -132,4 +126,11 @@ class User(
         foreign_keys="Trade.seller_user_id",
         back_populates="seller",
         lazy="selectin",
+    )
+
+    fiat_deposits: Mapped[list["FiatDeposit"]] = relationship(
+        "FiatDeposit",
+        back_populates="user",
+        lazy="selectin",
+        order_by="FiatDeposit.created_at.desc()",
     )

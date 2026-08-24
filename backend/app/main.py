@@ -72,6 +72,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Build the nested router before mounting it
+# api_router.setup()
+
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 

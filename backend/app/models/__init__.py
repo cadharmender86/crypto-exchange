@@ -49,6 +49,12 @@ from app.models.bank_account import (
 # Utilities
 from app.models.idempotency import IdempotencyRecord
 
+#Fiat Deposit
+from app.models.fiat_deposit import (
+    FiatDeposit,
+    FiatDepositStatus,
+)
+
 __all__ = [
     # Base
     "Base",
@@ -97,4 +103,8 @@ __all__ = [
 
     # Utilities
     "IdempotencyRecord",
+
+    #Fiat Deposit
+    "FiatDeposit",
+    "FiatDepositStatus",
 ]
