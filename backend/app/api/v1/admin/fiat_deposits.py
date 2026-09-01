@@ -74,9 +74,9 @@ async def list_fiat_deposits(
         items=[
             FiatDepositListItem(
                 id=d.id,
-                user_name=d.user.full_name,
-                user_email=d.user.email,
-                bank_name=d.bank_account.bank_name,
+                user_name=d.user.email if d.user else "Unknown User",
+                user_email=d.user.email if d.user else "",
+                bank_name=d.bank_account.bank_name if d.bank_account else "N/A",
                 utr_number=d.utr_number,
                 amount=d.amount,
                 currency=d.currency,
@@ -111,12 +111,12 @@ async def get_fiat_deposit(
 
     return FiatDepositDetailResponse(
         id=deposit.id,
-        user_name=deposit.user.full_name,
-        user_email=deposit.user.email,
-        bank_name=deposit.bank_account.bank_name,
-        account_holder_name=deposit.bank_account.account_holder_name,
-        account_number=deposit.bank_account.account_number,
-        ifsc_code=deposit.bank_account.ifsc_code,
+        user_name=d.user.email if deposit.user else "Unknown User",
+        user_email=deposit.user.email if deposit.user else "",
+        bank_name=deposit.bank_account.bank_name if deposit.bank_account else "N/A",
+        account_holder_name=deposit.bank_account.account_holder_name if deposit.bank_account else "N/A",
+        account_number=deposit.bank_account.account_number if deposit.bank_account else "N/A",
+        ifsc_code=deposit.bank_account.ifsc_code if deposit.bank_account else "N/A",
         utr_number=deposit.utr_number,
         amount=deposit.amount,
         currency=deposit.currency,

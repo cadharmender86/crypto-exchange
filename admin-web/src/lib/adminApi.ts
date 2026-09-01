@@ -1,3 +1,28 @@
+import { FiatDepositListResponse } from "./types/admin";
+
+export async function getFiatDeposits(params?: {
+  status?: string;
+  utr?: string;
+  userId?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<FiatDepositListResponse> {
+  const search = new URLSearchParams();
+
+  if (params?.status) search.append("status", params.status);
+  if (params?.utr) search.append("utr_number", params.utr);
+  if (params?.userId) search.append("user_id", params.userId);
+
+  search.append("limit", String(params?.limit ?? 20));
+  search.append("offset", String(params?.offset ?? 0));
+
+  const response = await adminFetch(
+    `/api/v1/admin/fiat-deposits?${search.toString()}`
+  );
+
+  return response.json();
+}
+
 const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 ).replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
@@ -80,22 +105,43 @@ export async function refreshAdminSession() {
   return saveTokens(response);
 }
 
-export async function adminFetch(path: string, init: RequestInit = {}) {
+export async function adminFetch(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
   const token = getAdminAccessToken();
-  const headers = new Headers(init.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  let response = await fetch(`${API_URL}${path}`, { ...init, headers, cache: "no-store" });
+  const headers = new Headers(init.headers);
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  let response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
+
   if (response.status === 401) {
     try {
       await refreshAdminSession();
+
       const newToken = getAdminAccessToken();
-      if (newToken) headers.set("Authorization", `Bearer ${newToken}`);
-      response = await fetch(`${API_URL}${path}`, { ...init, headers, cache: "no-store" });
+      if (newToken) {
+        headers.set("Authorization", `Bearer ${newToken}`);
+      }
+
+      response = await fetch(`${API_URL}${path}`, {
+        ...init,
+        headers,
+        cache: "no-store",
+      });
     } catch {
       clearAdminSession();
       throw new Error("ADMIN_UNAUTHENTICATED");
     }
   }
+
   return response;
 }

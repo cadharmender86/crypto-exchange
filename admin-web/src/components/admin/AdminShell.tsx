@@ -23,6 +23,7 @@ const navGroups: NavGroup[] = [
     { href: "/admin/deposits", label: "Deposits", icon: "⇩", permission: "DEPOSIT_READ" },
     { href: "/admin/withdrawals", label: "Withdrawals", icon: "⇧", permission: "WITHDRAWAL_READ" },
     { href: "/admin/transactions", label: "Transactions", icon: "▤", permission: "LEDGER_READ" },
+    { href: "/admin/finance/deposits", label: "Fiat Deposits", icon: "⇩", permission: "DEPOSIT_READ" },
   ] },
   { label: "TRADING", items: [
     { href: "/admin/markets", label: "Markets", icon: "◫", permission: "ORDER_READ" },
