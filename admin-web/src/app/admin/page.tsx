@@ -84,8 +84,8 @@ export default function AdminDashboard() {
     try {
       const [dr, dep, wd] = await Promise.all([
         adminFetch("/api/v1/admin/dashboard"),
-        adminFetch("/api/v1/admin/deposits?page=1&page_size=5"),
-        adminFetch("/api/v1/admin/withdrawals?page=1&page_size=5"),
+        adminFetch("/api/v1/admin/fiat/deposits?limit=5&offset=0"),
+        adminFetch("/api/v1/admin/withdrawals?limit=5&offset=0"),
       ]);
       const d = await dr.json() as Dashboard & { detail?: string };
       const deps = await dep.json() as TransactionList & { detail?: string };

@@ -4,15 +4,58 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { adminFetch } from "@/lib/adminApi";
 
-type User = {
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
+
+type UserBalance = {
+  asset_symbol: string;
+  available_balance: string;
+  locked_balance: string;
+};
+
+type UserBankAccount = {
   id: string;
-  email: string;
-  is_active: boolean;
-  is_verified: boolean;
-  two_factor_enabled: boolean;
-  last_login_at: string | null;
+  account_holder_name: string;
+  bank_name: string;
+  account_number: string;
+  ifsc_code: string;
+
+  account_type: string;
+  status: string;
+  is_primary: boolean;
+  verified_at: string | null;
+};
+
+type UserKYC = {
+  status: string;
+  full_name: string | null;
+  pan_number: string | null;
+  aadhaar_number: string | null;
+  reviewed_at: string | null;
+};
+
+type Deposit = {
+  id: string;
+  deposit_type: "FIAT" | "CRYPTO";
+  asset_symbol: string;
+  network: string | null;
+  amount: string;
+  status: string;
+  blockchain_tx_hash: string | null;
+  confirmations: number;
   created_at: string;
-  updated_at: string;
+};
+
+type Withdrawal = {
+  id: string;
+  withdrawal_type: "FIAT" | "CRYPTO";
+  asset_symbol: string;
+  network: string | null;
+  amount: string;
+  status: string;
+  destination_address: string | null;
+  created_at: string;
 };
 
 type AuditLog = {
@@ -25,238 +68,726 @@ type AuditLog = {
   created_at: string;
 };
 
-type Deposit = {
+type User = {
   id: string;
-  user_id: string;
-  user_email: string;
-  wallet_address_id: string;
-  asset_id: string;
-  network: string;
-  blockchain_tx_hash: string;
-  amount: string;
-  confirmations: number;
-  status: string;
-  ledger_transaction_id: string | null;
+  email: string;
+
+  is_active: boolean;
+  is_verified: boolean;
+  two_factor_enabled: boolean;
+  
+  last_login_at: string | null;
   created_at: string;
   updated_at: string;
+
+  balances: UserBalance[];
+  bank_accounts: UserBankAccount[];
+  kyc: UserKYC | null;
+
+  recent_deposits: Deposit[];
+  recent_withdrawals: Withdrawal[];
+
+   // NEW FIELDS
+  deposit_count: number;
+  withdrawal_count: number;
+
+  transaction_summary: {
+    deposits: number;
+    withdrawals: number;
+  };
 };
 
-type Withdrawal = {
-  id: string;
-  user_id: string;
-  user_email: string;
-  account_id: string;
-  asset_id: string;
-  network: string;
-  destination_address: string;
-  amount: string;
-  status: string;
-  idempotency_key: string;
-  ledger_transaction_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type ListResponse<T> = { items: T[]; page: number; page_size: number; total: number };
+/* -------------------------------------------------------------------------- */
+/*                                  HELPERS                                   */
+/* -------------------------------------------------------------------------- */
 
 function formatDate(value: string | null) {
   if (!value) return "Never";
   return new Date(value).toLocaleString();
 }
 
-function shortId(value: string) {
-  return value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value;
+function shortId(value?: string | null) {
+  if (!value) return "—";
+  return value.length > 18
+    ? `${value.slice(0, 10)}...${value.slice(-6)}`
+    : value;
 }
 
-function Status({ active, children }: { active: boolean; children: React.ReactNode }) {
-  return <span className={active ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300" : "rounded-full bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"}>{children}</span>;
+/* -------------------------------------------------------------------------- */
+/*                              STATUS COMPONENT                              */
+/* -------------------------------------------------------------------------- */
+
+function StatusBadge({ value }: { value: string }) {
+  const status = value.toUpperCase();
+
+  let classes =
+    "rounded-full px-2 py-1 text-xs font-medium bg-slate-700/40 text-slate-300";
+
+  if (
+    ["APPROVED", "SUCCESS", "COMPLETED", "CONFIRMED", "ACTIVE"].includes(status)
+  ) {
+    classes =
+      "rounded-full px-2 py-1 text-xs font-medium bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (["PENDING", "UNDER_REVIEW", "PROCESSING"].includes(status)) {
+    classes =
+      "rounded-full px-2 py-1 text-xs font-medium bg-yellow-500/10 text-yellow-300";
+  }
+
+  if (["REJECTED", "FAILED", "FROZEN"].includes(status)) {
+    classes =
+      "rounded-full px-2 py-1 text-xs font-medium bg-red-500/10 text-red-300";
+  }
+
+  return <span className={classes}>{value}</span>;
 }
 
-function TransactionStatus({ value }: { value: string }) {
-  const normalized = value.toUpperCase();
-  const positive = ["COMPLETED", "CONFIRMED", "SUCCESS", "APPROVED"].includes(normalized);
-  const warning = ["PENDING", "PROCESSING", "UNDER_REVIEW"].includes(normalized);
-  return <span className={positive ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300" : warning ? "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300" : "rounded-full bg-slate-700/40 px-2.5 py-1 text-xs font-medium text-slate-300"}>{value}</span>;
-}
+/* -------------------------------------------------------------------------- */
+/*                               MAIN COMPONENT                               */
+/* -------------------------------------------------------------------------- */
 
 export default function UserDetails({ userId }: { userId: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [deposits, setDeposits] = useState<Deposit[]>([]);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [transactionTotals, setTransactionTotals] = useState({ deposits: 0, withdrawals: 0 });
+
   const [loading, setLoading] = useState(true);
-  const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [transactionError, setTransactionError] = useState("");
-
-  const loadTransactions = useCallback(async (email: string) => {
-    setTransactionsLoading(true);
-    setTransactionError("");
-    try {
-      const encodedEmail = encodeURIComponent(email);
-      const [depositResponse, withdrawalResponse] = await Promise.all([
-        adminFetch(`/api/v1/admin/deposits?page=1&page_size=10&search=${encodedEmail}`),
-        adminFetch(`/api/v1/admin/withdrawals?page=1&page_size=10&search=${encodedEmail}`),
-      ]);
-
-      const failures: string[] = [];
-      if (depositResponse.ok) {
-        const data = (await depositResponse.json()) as ListResponse<Deposit>;
-        setDeposits(data.items);
-        setTransactionTotals((current) => ({ ...current, deposits: data.total }));
-      } else {
-        failures.push("deposits");
-      }
-
-      if (withdrawalResponse.ok) {
-        const data = (await withdrawalResponse.json()) as ListResponse<Withdrawal>;
-        setWithdrawals(data.items);
-        setTransactionTotals((current) => ({ ...current, withdrawals: data.total }));
-      } else {
-        failures.push("withdrawals");
-      }
-
-      if (failures.length) {
-        setTransactionError(`Unable to load ${failures.join(" and ")}. Your admin role may not have the required read permission.`);
-      }
-    } catch (err) {
-      setTransactionError(err instanceof Error ? err.message : "Unable to load user transactions");
-    } finally {
-      setTransactionsLoading(false);
-    }
-  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+
     try {
       const response = await adminFetch(`/api/v1/admin/users/${userId}`);
-      const data = (await response.json()) as User & { detail?: string };
-      if (!response.ok) throw new Error(data.detail || "Unable to load user");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Unable to load user.");
+      }
+
       setUser(data);
 
-      void loadTransactions(data.email);
-
+      /* Optional audit logs */
       try {
-        const auditResponse = await adminFetch(`/api/v1/admin/audit-logs?limit=100`);
+        const auditResponse = await adminFetch(
+          `/api/v1/admin/audit-logs?limit=20&resource_type=USER&resource_id=${userId}`
+        );
+
         if (auditResponse.ok) {
-          const auditData = (await auditResponse.json()) as AuditLog[];
-          setLogs(auditData.filter((log) => log.resource_type === "USER" && log.resource_id === userId).slice(0, 10));
+          const auditData = await auditResponse.json();
+
+          setLogs(
+            auditData
+              .filter(
+                (log: AuditLog) =>
+                  log.resource_type === "USER" &&
+                  log.resource_id === userId
+              )
+              .slice(0, 10)
+          );
         }
       } catch {
-        // Audit history is optional for admins without AUDIT_READ permission.
+        // ignore permission error
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load user");
+      if (err instanceof Error) setError(err.message);
+      else setError("Unable to load user.");
     } finally {
       setLoading(false);
     }
-  }, [loadTransactions, userId]);
+  }, [userId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function changeStatus() {
+  const toggleUserStatus = async () => {
     if (!user) return;
-    const nextAction = user.is_active ? "suspend" : "activate";
-    const reason = window.prompt(user.is_active ? "Reason for suspension:" : "Reason for activation:");
-    if (!reason || reason.trim().length < 3) return;
 
     setActionLoading(true);
     setError("");
     setNotice("");
+
     try {
-      const response = await adminFetch(`/api/v1/admin/users/${user.id}/${nextAction}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: reason.trim() }),
-      });
-      const data = (await response.json()) as User & { detail?: string };
-      if (!response.ok) throw new Error(data.detail || "User action failed");
-      setUser(data);
-      setNotice(user.is_active ? "User suspended successfully." : "User activated successfully.");
-      void load();
+      // Backend endpoints
+      const endpoint = user.is_active ? "freeze" : "unfreeze";
+
+      const response = await adminFetch(
+        `/api/v1/admin/users/${user.id}/${endpoint}`,
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to update user status");
+      }
+
+      setNotice(data.message ?? "User status updated.");
+
+      // Reload latest user data
+      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "User action failed");
+      setError(err instanceof Error ? err.message : "Failed to fetch");
     } finally {
       setActionLoading(false);
     }
+  };
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-10 text-center text-slate-400">
+        Loading user...
+      </div>
+    );
   }
 
-  if (loading) return <div className="mx-auto max-w-7xl rounded-2xl border border-slate-800 bg-[#0d1422] p-10 text-center text-sm text-slate-500">Loading user...</div>;
-  if (!user) return <div className="mx-auto max-w-7xl space-y-4"><Link href="/admin/users" className="text-sm text-cyan-400 hover:text-cyan-300">← Back to users</Link><div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5 text-sm text-red-300">{error || "User not found."}</div></div>;
+  if (!user) {
+    return (
+      <div className="rounded-xl bg-red-900/20 border border-red-700 p-6 text-red-300">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <Link href="/admin/users" className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400 hover:text-cyan-300">← User management</Link>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-white">User details</h2>
-          <p className="mt-2 text-sm text-slate-500">Review the customer account, transaction activity and authorized account controls.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Status active={user.is_active}>{user.is_active ? "Active" : "Suspended"}</Status>
-          <button disabled={actionLoading} onClick={() => void changeStatus()} className={user.is_active ? "rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-50" : "rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50"}>{actionLoading ? "Saving..." : user.is_active ? "Suspend account" : "Activate account"}</button>
+    <div className="space-y-6">
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <Link
+          href="/admin/users"
+          className="text-sm text-cyan-400 hover:text-cyan-300"
+        >
+          ← Back to Users
+        </Link>
+
+        <div className="mt-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">{user.email}</h1>
+
+            <p className="mt-2 text-xs text-slate-500">
+              User ID: {shortId(user.id)}
+            </p>
+          </div>
+
+          <button
+            onClick={toggleUserStatus}
+            disabled={actionLoading}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+              user.is_active ? "bg-red-600" : "bg-emerald-600"
+            }`}
+          >
+            {actionLoading
+              ? "Processing..."
+              : user.is_active
+              ? "Freeze User"
+              : "Unfreeze User"}
+          </button>
         </div>
       </div>
 
-      {error && <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-300">{error}</div>}
-      {notice && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-emerald-300">{notice}</div>}
+      {notice && (
+        <div className="rounded-xl bg-emerald-900/20 border border-emerald-700 p-3 text-emerald-300">
+          {notice}
+        </div>
+      )}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-800 bg-[#0d1422] p-5"><div className="text-xs uppercase tracking-wider text-slate-500">Account status</div><div className="mt-3"><Status active={user.is_active}>{user.is_active ? "Active" : "Suspended"}</Status></div></div>
-        <div className="rounded-2xl border border-slate-800 bg-[#0d1422] p-5"><div className="text-xs uppercase tracking-wider text-slate-500">KYC status</div><div className={user.is_verified ? "mt-3 text-emerald-300" : "mt-3 text-amber-300"}>{user.is_verified ? "Verified" : "Unverified"}</div></div>
-        <div className="rounded-2xl border border-slate-800 bg-[#0d1422] p-5"><div className="text-xs uppercase tracking-wider text-slate-500">2FA</div><div className="mt-3 text-slate-200">{user.two_factor_enabled ? "Enabled" : "Disabled"}</div></div>
-        <div className="rounded-2xl border border-slate-800 bg-[#0d1422] p-5"><div className="text-xs uppercase tracking-wider text-slate-500">Last login</div><div className="mt-3 text-sm text-slate-200">{formatDate(user.last_login_at)}</div></div>
-      </section>
+      {error && (
+        <div className="rounded-xl bg-red-900/20 border border-red-700 p-3 text-red-300">
+          {error}
+        </div>
+      )}
 
-      <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
-          <h3 className="text-base font-semibold text-white">Account information</h3>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <div><div className="text-xs uppercase tracking-wider text-slate-500">Email</div><div className="mt-2 break-all text-sm text-slate-200">{user.email}</div></div>
-            <div><div className="text-xs uppercase tracking-wider text-slate-500">User ID</div><div className="mt-2 break-all font-mono text-xs text-slate-400">{user.id}</div></div>
-            <div><div className="text-xs uppercase tracking-wider text-slate-500">Created</div><div className="mt-2 text-sm text-slate-300">{formatDate(user.created_at)}</div></div>
-            <div><div className="text-xs uppercase tracking-wider text-slate-500">Last updated</div><div className="mt-2 text-sm text-slate-300">{formatDate(user.updated_at)}</div></div>
+            {/* ================= ACCOUNT STATUS ================= */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <h2 className="mb-5 text-lg font-semibold text-white">Account Status</h2>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <InfoRow
+            label="Account Status"
+            value={
+              user.is_active ? (
+                <StatusBadge value="ACTIVE" />
+              ) : (
+                <StatusBadge value="FROZEN" />
+              )
+            }
+          />
+
+          <InfoRow
+            label="Email Verified"
+            value={
+              user.is_verified ? (
+                <StatusBadge value="APPROVED" />
+              ) : (
+                <StatusBadge value="PENDING" />
+              )
+            }
+          />
+
+          <InfoRow
+            label="Two Factor Authentication"
+            value={user.two_factor_enabled ? "Enabled" : "Disabled"}
+          />
+
+          <InfoRow
+            label="Last Login"
+            value={formatDate(user.last_login_at)}
+          />
+
+          <InfoRow
+            label="Created At"
+            value={formatDate(user.created_at)}
+          />
+
+          <InfoRow
+            label="Updated At"
+            value={formatDate(user.updated_at)}
+          />
+        </div>
+      </div>
+
+      {/* ================= WALLET BALANCES ================= */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            Wallet Balances
+          </h2>
+
+          <span className="text-xs text-slate-500">
+            {user.balances.length} Assets
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-700 text-slate-400">
+              <tr>
+                <th className="pb-3 text-left">Asset</th>
+                <th className="pb-3 text-right">Available</th>
+                <th className="pb-3 text-right">Locked</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {user.balances.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="py-6 text-center text-slate-500"
+                  >
+                    No balances available.
+                  </td>
+                </tr>
+              ) : (
+                user.balances.map((balance) => (
+                  <tr
+                    key={balance.asset_symbol}
+                    className="border-b border-slate-800"
+                  >
+                    <td className="py-4 font-medium text-white">
+                      {balance.asset_symbol}
+                    </td>
+
+                    <td className="py-4 text-right text-emerald-400">
+                      {balance.available_balance}
+                    </td>
+
+                    <td className="py-4 text-right text-yellow-400">
+                      {balance.locked_balance}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ================= BANK ACCOUNTS ================= */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            Linked Bank Accounts
+          </h2>
+
+          <span className="text-xs text-slate-500">
+            {user.bank_accounts.length} Accounts
+          </span>
+        </div>
+
+        {user.bank_accounts.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No bank account linked with this user.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {user.bank_accounts.map((bank) => (
+              <div
+                key={bank.id}
+                className="rounded-xl border border-slate-700 bg-slate-900/40 p-5"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="font-medium text-white">
+                    {bank.account_holder_name}
+                  </div>
+
+                  <StatusBadge
+                    value={bank.status}
+                  />
+                  <InfoRow label="Account Type" value={bank.account_type} />
+                  <InfoRow
+                    label="Primary Account"
+                    value={bank.is_primary ? "Yes" : "No"}
+                  />
+                  <InfoRow
+                    label="Verified At"
+                    value={bank.verified_at ? formatDate(bank.verified_at) : "Not Verified"}
+                  />  
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <InfoRow label="Bank" value={bank.bank_name} />
+                  <InfoRow label="IFSC Code" value={bank.ifsc_code} />
+                  <InfoRow
+                    label="Account Number"
+                    value={bank.account_number}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
+      </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div><h3 className="text-base font-semibold text-white">Transaction summary</h3><p className="mt-1 text-xs text-slate-500">Activity linked to this user's email.</p></div>
-            <button onClick={() => void loadTransactions(user.email)} disabled={transactionsLoading} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-500 disabled:opacity-50">Refresh</button>
+      {/* ===================== KYC DETAILS ===================== */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <h2 className="mb-5 text-lg font-semibold text-white">
+          KYC Details
+        </h2>
+
+        {!user.kyc ? (
+          <p className="text-sm text-slate-500">
+            User has not submitted KYC.
+          </p>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            <InfoRow
+              label="KYC Status"
+              value={<StatusBadge value={user.kyc.status} />}
+            />
+
+            <InfoRow
+              label="Reviewed At"
+              value={formatDate(user.kyc.reviewed_at)}
+            />
+
+            <InfoRow
+              label="Full Name"
+              value={user.kyc.full_name ?? "—"}
+            />
+
+            <InfoRow
+              label="PAN Number"
+              value={user.kyc.pan_number ?? "—"}
+            />
+
+            <InfoRow
+              label="Aadhaar Number"
+              value={user.kyc.aadhaar_number ?? "—"}
+            />
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><div className="text-xs text-slate-500">Deposits</div><div className="mt-2 text-xl font-semibold text-white">{transactionTotals.deposits}</div></div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><div className="text-xs text-slate-500">Withdrawals</div><div className="mt-2 text-xl font-semibold text-white">{transactionTotals.withdrawals}</div></div>
+        )}
+      </div>
+
+      {/* ================= TRANSACTION SUMMARY ================= */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <h2 className="mb-5 text-lg font-semibold text-white">
+          Transaction Summary
+        </h2>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <SummaryCard
+            title="Total Deposits"
+            value={user.deposit_count}
+            color="text-emerald-400"
+          />
+
+          <SummaryCard
+            title="Total Withdrawals"
+            value={user.withdrawal_count}
+            color="text-orange-400"
+          />
+        </div>
+      </div>
+
+          {/* ================= RECENT DEPOSITS ================= */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            Recent Deposits
+          </h2>
+
+          <span className="text-xs text-slate-500">
+            {user.recent_deposits.length} Records
+          </span>
+        </div>
+
+        <TransactionTable
+          type="deposit"
+          rows={user.recent_deposits}
+        />
+      </div>
+
+      {/* ================= RECENT WITHDRAWALS ================= */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            Recent Withdrawals
+          </h2>
+
+          <span className="text-xs text-slate-500">
+            {user.recent_withdrawals.length} Records
+          </span>
+        </div>
+
+        <TransactionTable
+          type="withdrawal"
+          rows={user.recent_withdrawals}
+        />
+      </div>
+
+      {/* ================= AUDIT LOGS ================= */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            Recent Audit Activity
+          </h2>
+
+          <span className="text-xs text-slate-500">
+            {logs.length} Events
+          </span>
+        </div>
+
+        {logs.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No audit records available for this user.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {logs.map((log) => (
+              <div
+                key={log.id}
+                className="rounded-xl border border-slate-700 bg-slate-900/40 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-white">
+                    {log.action}
+                  </p>
+
+                  <StatusBadge value={log.result} />
+                </div>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {formatDate(log.created_at)}
+                </p>
+
+                {log.reason && (
+                  <p className="mt-3 text-sm text-slate-300">
+                    {log.reason}
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
+        )}
+      </div>
 
-      {transactionError && <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-300">{transactionError}</div>}
+    </div>
+  );
+}
 
-      <section className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
-        <div className="flex items-center justify-between gap-3"><div><h3 className="text-base font-semibold text-white">Recent deposits</h3><p className="mt-1 text-xs text-slate-500">Latest 10 deposits associated with this customer.</p></div><span className="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-500">{transactionsLoading ? "Loading…" : transactionTotals.deposits}</span></div>
-        <div className="mt-5 overflow-x-auto">
-          {deposits.length === 0 && !transactionsLoading ? <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-sm text-slate-600">No deposits found for this user.</div> : <table className="w-full min-w-[850px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500"><tr><th className="pb-3 pr-4">Date</th><th className="pb-3 pr-4">Network</th><th className="pb-3 pr-4">Amount</th><th className="pb-3 pr-4">Confirmations</th><th className="pb-3 pr-4">Status</th><th className="pb-3">Transaction</th></tr></thead><tbody>{deposits.map((deposit) => <tr key={deposit.id} className="border-b border-slate-800/70 last:border-0"><td className="py-3 pr-4 whitespace-nowrap text-slate-400">{formatDate(deposit.created_at)}</td><td className="py-3 pr-4 text-slate-300">{deposit.network}</td><td className="py-3 pr-4 font-medium text-slate-200">{deposit.amount}</td><td className="py-3 pr-4 text-slate-400">{deposit.confirmations}</td><td className="py-3 pr-4"><TransactionStatus value={deposit.status} /></td><td className="py-3 font-mono text-xs text-slate-500" title={deposit.blockchain_tx_hash}>{shortId(deposit.blockchain_tx_hash)}</td></tr>)}</tbody></table>}
-        </div>
-      </section>
+/* -------------------------------------------------------------------------- */
+/*                            REUSABLE COMPONENTS                             */
+/* -------------------------------------------------------------------------- */
 
-      <section className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
-        <div className="flex items-center justify-between gap-3"><div><h3 className="text-base font-semibold text-white">Recent withdrawals</h3><p className="mt-1 text-xs text-slate-500">Latest 10 withdrawals associated with this customer.</p></div><span className="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-500">{transactionsLoading ? "Loading…" : transactionTotals.withdrawals}</span></div>
-        <div className="mt-5 overflow-x-auto">
-          {withdrawals.length === 0 && !transactionsLoading ? <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-sm text-slate-600">No withdrawals found for this user.</div> : <table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500"><tr><th className="pb-3 pr-4">Date</th><th className="pb-3 pr-4">Network</th><th className="pb-3 pr-4">Amount</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Destination</th><th className="pb-3">ID</th></tr></thead><tbody>{withdrawals.map((withdrawal) => <tr key={withdrawal.id} className="border-b border-slate-800/70 last:border-0"><td className="py-3 pr-4 whitespace-nowrap text-slate-400">{formatDate(withdrawal.created_at)}</td><td className="py-3 pr-4 text-slate-300">{withdrawal.network}</td><td className="py-3 pr-4 font-medium text-slate-200">{withdrawal.amount}</td><td className="py-3 pr-4"><TransactionStatus value={withdrawal.status} /></td><td className="max-w-xs py-3 pr-4 font-mono text-xs text-slate-500" title={withdrawal.destination_address}>{shortId(withdrawal.destination_address)}</td><td className="py-3 font-mono text-xs text-slate-500">{shortId(withdrawal.id)}</td></tr>)}</tbody></table>}
-        </div>
-      </section>
+function InfoRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-900/30 p-3">
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
 
-      <section className="rounded-2xl border border-slate-800 bg-[#0d1422] p-6">
-        <div className="flex items-center justify-between"><div><h3 className="text-base font-semibold text-white">User audit history</h3><p className="mt-1 text-xs text-slate-500">Administrative actions associated with this account.</p></div><span className="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-500">Last 10</span></div>
-        <div className="mt-5 overflow-x-auto">
-          {logs.length === 0 ? <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-sm text-slate-600">No user-specific audit events available.</div> : <table className="w-full min-w-[650px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500"><tr><th className="pb-3 pr-4">Action</th><th className="pb-3 pr-4">Result</th><th className="pb-3 pr-4">Reason</th><th className="pb-3">Time</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id} className="border-b border-slate-800/70 last:border-0"><td className="py-3 pr-4 font-medium text-slate-300">{log.action}</td><td className="py-3 pr-4"><span className="text-emerald-300">{log.result}</span></td><td className="max-w-md py-3 pr-4 text-slate-500">{log.reason || "—"}</td><td className="py-3 text-slate-500">{formatDate(log.created_at)}</td></tr>)}</tbody></table>}
-        </div>
-      </section>
+      <div className="mt-2 text-sm text-white">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  title,
+  value,
+  color,
+}: {
+  title: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-6">
+      <p className="text-sm text-slate-400">{title}</p>
+
+      <p className={`mt-3 text-3xl font-bold ${color}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+
+function TransactionStatus({ value }: { value: string }) {
+  const normalized = value.toUpperCase();
+
+  let classes =
+    "rounded-full px-2 py-1 text-xs font-medium ";
+
+  if (["APPROVED", "COMPLETED", "CONFIRMED", "SUCCESS"].includes(normalized)) {
+    classes += "bg-emerald-500/20 text-emerald-300";
+  } else if (
+    ["PENDING", "PROCESSING", "UNDER_REVIEW"].includes(normalized)
+  ) {
+    classes += "bg-amber-500/20 text-amber-300";
+  } else if (["REJECTED", "FAILED", "CANCELLED"].includes(normalized)) {
+    classes += "bg-red-500/20 text-red-300";
+  } else {
+    classes += "bg-slate-700/40 text-slate-300";
+  }
+
+  return <span className={classes}>{value}</span>;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                           TRANSACTION TABLE                                */
+/* -------------------------------------------------------------------------- */
+
+function TransactionTable({
+  type,
+  rows,
+}: {
+  type: "deposit" | "withdrawal";
+  rows: Deposit[] | Withdrawal[];
+}) {
+  const isDeposit = type === "deposit";
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead className="border-b border-slate-800 text-slate-400">
+          <tr>
+            <th className="px-4 py-3 text-left">Date</th>
+            <th className="px-4 py-3 text-left">Type</th>
+            <th className="px-4 py-3 text-left">Asset</th>
+            <th className="px-4 py-3 text-left">Network</th>
+            <th className="px-4 py-3 text-right">Amount</th>
+
+            {isDeposit ? (
+              <th className="px-4 py-3 text-center">Confirmations</th>
+            ) : (
+              <th className="px-4 py-3 text-left">Destination</th>
+            )}
+
+            <th className="px-4 py-3 text-center">Status</th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-slate-800">
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                No recent {type}s found.
+              </td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id} className="hover:bg-slate-900/40">
+                <td className="px-4 py-3 text-slate-300">
+                  {formatDate(row.created_at)}
+                </td>
+
+                <td className="px-4 py-3">
+                  {(() => {
+                    const transactionType =
+                      "deposit_type" in row ? row.deposit_type : row.withdrawal_type;
+
+                    const isCrypto = transactionType === "CRYPTO";
+
+                    return (
+                      <span
+                        className={
+                          isCrypto
+                            ? "rounded bg-cyan-500/20 px-2 py-1 text-xs text-cyan-300"
+                            : "rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300"
+                        }
+                      >
+                        {transactionType}
+                      </span>
+                    );
+                  })()}
+                </td>
+
+                <td className="px-4 py-3 font-medium text-white">
+                  {row.asset_symbol}
+                </td>
+
+                <td className="px-4 py-3 text-slate-300">
+                  {row.network ?? "INR"}
+                </td>
+
+                <td className="px-4 py-3 text-right font-medium text-white">
+                  {row.amount}
+                </td>
+
+                {isDeposit ? (
+                  <td className="px-4 py-3 text-center text-slate-300">
+                    {"confirmations" in row ? row.confirmations : "-"}
+                  </td>
+                ) : (
+                  <td className="px-4 py-3 text-slate-300">
+                    {"destination_address" in row
+                      ? shortId(row.destination_address)
+                      : "-"}
+                  </td>
+                )}
+
+                <td className="px-4 py-3 text-center">
+                  <TransactionStatus value={row.status} />
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

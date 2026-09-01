@@ -104,3 +104,9 @@ class BankAccount(
         lazy="selectin",
         cascade="all, delete-orphan",
     )
+
+    withdrawals: Mapped[list["Withdrawal"]] = relationship(
+        "Withdrawal",
+        back_populates="bank_account",
+        cascade="all, delete-orphan",
+    )
