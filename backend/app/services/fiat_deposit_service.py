@@ -1,10 +1,14 @@
 from decimal import Decimal
 from uuid import UUID
-from datetime import timedelta
+from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.admin import AuditLog
+from app.models.ledger_transaction import LedgerTransaction
+from app.models.fiat_transaction import FiatTransactionType
 from app.models.bank_account import (
     BankAccount,
     BankAccountStatus,
@@ -157,6 +161,7 @@ class FiatDepositService:
         self,
         deposit_id: UUID,
         approved_by_admin_id: UUID,
+        remarks: str | None = None,
     ) -> FiatDeposit:
         """
         Approve a pending INR deposit and credit the user's fiat wallet.
@@ -222,7 +227,18 @@ class FiatDepositService:
         deposit.ledger_transaction_id = ledger_tx.id
         deposit.approved_by_admin_id = approved_by_admin_id
         deposit.approved_at = datetime.now(timezone.utc)
+        deposit.remarks = remarks.strip() if remarks else deposit.remarks
 
+        self.db.add(
+            AuditLog(
+                admin_user_id=approved_by_admin_id,
+                action="FIAT_DEPOSIT_APPROVED",
+                resource_type="FIAT_DEPOSIT",
+                resource_id=str(deposit.id),
+                reson=remarks,
+                result="SUCCESS",
+            )
+        )
         await self.db.flush()
 
         return deposit
@@ -258,6 +274,16 @@ class FiatDepositService:
         deposit.approved_by_admin_id = rejected_by_admin_id
         deposit.approved_at = datetime.now(timezone.utc)
 
+        self.db.add(
+            AuditLog(
+                admin_user_id=rejected_by_admin_id,
+                action="FIAT_DEPOSIT_REJECTED",
+                resource_type="FIAT_DEPOSIT",
+                resource_id=str(deposit.id),
+                reason=rejection_reason,
+                result="SUCCESS",
+            )
+        )
         await self.db.flush()
 
         return deposit
@@ -289,6 +315,15 @@ class FiatDepositService:
         for deposit in deposits:
             deposit.status = FiatDepositStatus.EXPIRED
 
+        self.db.add(
+            AuditLog(
+                action="FIAT_DEPOSIT_EXPIRED",
+                resource_type="FIAT_DEPOSIT",
+                resource_id=str(deposit.id),
+                reason=f"Automatically expired after {expiry_hours} hours.",
+                result="SUCCESS",
+            )
+        )
         await self.db.flush()
 
         return len(deposits)
@@ -324,6 +359,10 @@ class FiatDepositService:
 
         result = await self.db.execute(
             select(FiatDeposit)
+            .options(
+                selectinload(FiatDeposit.user),
+                selectinload(FiatDeposit.bank_account),
+            )
             .where(FiatDeposit.status == FiatDepositStatus.PENDING)
             .order_by(FiatDeposit.created_at.asc())
             .limit(limit)

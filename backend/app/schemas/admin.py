@@ -39,6 +39,66 @@ class AdminDashboardResponse(BaseModel):
     pending_withdrawals: int
     active_assets: int
 
+class FiatDepositListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_name: str
+    user_email: str
+    bank_name: str
+    utr_number: str
+    amount: Decimal
+    currency: str
+    status: str
+    created_at: datetime
+
+class FiatDepositListResponse(BaseModel):
+    items: list[FiatDepositListItem]
+    total: int
+
+class FiatDepositDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+
+    user_name: str
+    user_email: str
+
+    bank_name: str
+    account_holder_name: str
+    account_number: str
+    ifsc_code: str
+
+    utr_number: str
+    amount: Decimal
+    currency: str
+    status: str
+
+    remarks: str | None = None
+    rejection_reason: str | None = None
+
+    approved_at: datetime | None = None
+    created_at: datetime    
+
+class ApproveDepositRequest(BaseModel):
+    remarks: str | None = None
+
+
+class RejectDepositRequest(BaseModel):
+    rejection_reason: str
+
+class ApproveDepositResponse(BaseModel):
+    success: bool
+    message: str
+    deposit_id: UUID
+    status: str
+
+class RejectDepositResponse(BaseModel):
+    success: bool
+    message: str
+    deposit_id: UUID
+    status: str
+            
 class UserListItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

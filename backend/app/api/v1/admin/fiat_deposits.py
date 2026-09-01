@@ -2,23 +2,27 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.admin_auth import require_permission
 from app.core.database import get_db
-from app.models.admin import AdminUser
+from app.models.admin import AdminUser, AuditLog
 from app.models.fiat_deposit import FiatDeposit, FiatDepositStatus
-from app.schemas.fiat_deposit import (
-    ApproveDepositResponse,
+from app.models.user import User
+from app.schemas.admin import (
+    FiatDepositListItem,
     FiatDepositListResponse,
-    FiatDepositResponse,
+    FiatDepositDetailResponse,
+    ApproveDepositRequest,
+    ApproveDepositResponse,
     RejectDepositRequest,
     RejectDepositResponse,
 )
 from app.services.admin_fiat_deposit_service import AdminFiatDepositService
 
 router = APIRouter(
-    prefix="/fiat/deposits",
+    prefix="/fiat-deposits",
     tags=["Admin Fiat Deposits"],
 )
 
@@ -27,18 +31,22 @@ router = APIRouter(
     response_model=FiatDepositListResponse,
 )
 async def list_fiat_deposits(
-    status_filter: FiatDepositStatus | None = Query(
-        default=None,
-        alias="status",
-    ),
-    utr_number: str | None = Query(default=None),
-    user_id: UUID | None = Query(default=None),
+    status_filter: FiatDepositStatus | None = Query(None, alias="status"),
+    utr_number: str | None = Query(None),
+    user_id: UUID | None = Query(None),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _: AdminUser = Depends(require_permission("DEPOSIT_READ")),
+    _: AdminUser = Depends(require_permission("FIAT_DEPOSIT_READ")),
 ):
-    query = select(FiatDeposit)
+    query = (
+        select(FiatDeposit)
+        .options(
+            selectinload(FiatDeposit.user),
+            selectinload(FiatDeposit.bank_account),
+        )
+        .order_by(FiatDeposit.created_at.desc())
+    )
 
     if status_filter:
         query = query.where(FiatDeposit.status == status_filter)
@@ -51,39 +59,73 @@ async def list_fiat_deposits(
     if user_id:
         query = query.where(FiatDeposit.user_id == user_id)
 
+    # Total records before pagination
     total = await db.scalar(
         select(func.count()).select_from(query.subquery())
     )
 
-    deposits = await db.scalars(
-        query.order_by(FiatDeposit.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    deposits = (
+        await db.scalars(
+            query.limit(limit).offset(offset)
+        )
+    ).all()
 
     return FiatDepositListResponse(
-        items=list(deposits),
+        items=[
+            FiatDepositListItem(
+                id=d.id,
+                user_name=d.user.full_name,
+                user_email=d.user.email,
+                bank_name=d.bank_account.bank_name,
+                utr_number=d.utr_number,
+                amount=d.amount,
+                currency=d.currency,
+                status=d.status.value,
+                created_at=d.created_at,
+            )
+            for d in deposits
+        ],
         total=total or 0,
     )
 
 @router.get(
     "/{deposit_id}",
-    response_model=FiatDepositResponse,
+    response_model=FiatDepositDetailResponse,
 )
 async def get_fiat_deposit(
     deposit_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: AdminUser = Depends(require_permission("DEPOSIT_READ")),
+    _: AdminUser = Depends(require_permission("FIAT_DEPOSIT_READ")),
 ):
-    deposit = await db.get(FiatDeposit, deposit_id)
-
-    if deposit is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Deposit not found.",
+    deposit = await db.scalar(
+        select(FiatDeposit)
+        .options(
+            selectinload(FiatDeposit.user),
+            selectinload(FiatDeposit.bank_account),
         )
+        .where(FiatDeposit.id == deposit_id)
+    )
 
-    return deposit
+    if not deposit:
+        raise HTTPException(status_code=404, detail="Deposit not found")
+
+    return FiatDepositDetailResponse(
+        id=deposit.id,
+        user_name=deposit.user.full_name,
+        user_email=deposit.user.email,
+        bank_name=deposit.bank_account.bank_name,
+        account_holder_name=deposit.bank_account.account_holder_name,
+        account_number=deposit.bank_account.account_number,
+        ifsc_code=deposit.bank_account.ifsc_code,
+        utr_number=deposit.utr_number,
+        amount=deposit.amount,
+        currency=deposit.currency,
+        status=deposit.status.value,
+        remarks=deposit.remarks,
+        rejection_reason=deposit.rejection_reason,
+        approved_at=deposit.approved_at,
+        created_at=deposit.created_at,
+    )
 
 @router.post(
     "/{deposit_id}/approve",
@@ -104,7 +146,12 @@ async def approve_fiat_deposit(
 
         await db.commit()
 
-        return ApproveDepositResponse(deposit=deposit)
+        return ApproveDepositResponse(
+            success=True,
+            message="Fiat Deposit approved successfully",
+            deposit_id=deposit.id,
+            status=deposit.status.value if hasattr(deposit.status, "value") else str(deposit.status),
+        )
 
     except ValueError as exc:
         await db.rollback()
@@ -134,7 +181,12 @@ async def reject_fiat_deposit(
 
         await db.commit()
 
-        return RejectDepositResponse(deposit=deposit)
+        return RejectDepositResponse(
+            success=True,
+            message="Fiat Deposit rejected successfully",
+            deposit_id=deposit.id,
+            status=deposit.status.value if hasattr(deposit.status, "value") else str(deposit.status),
+        )
 
     except ValueError as exc:
         await db.rollback()
