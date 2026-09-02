@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.payment_order import (
@@ -6,6 +7,7 @@ from app.models.payment_order import (
     PaymentOrder,
     PaymentOrderStatus,
 )
+from uuid import uuid4
 from app.models.user import User
 from app.services.gateways.cashfree import CashfreeGateway
 
@@ -21,12 +23,14 @@ class PaymentService:
         user: User,
         amount: Decimal,
     ) -> PaymentOrder:
+        gateway_order_id = f"BN_{uuid4().hex[:20]}"
 
         gateway_response = self.gateway.create_payment_order(
-            user_id=str(user.id),
-            email=user.email,
-            phone="9999999999",     # Temporary sandbox number
-            amount=float(amount),
+            order_id=gateway_order_id,
+            customer_id=str(user.id),
+            customer_email=user.email,
+            customer_phone="9999999999",
+            amount=amount,
         )
 
         payment_order = PaymentOrder(
@@ -37,7 +41,11 @@ class PaymentService:
             amount=amount,
             currency="INR",
             status=PaymentOrderStatus.PENDING,
-            expires_at=gateway_response["expires_at"],
+            expires_at=(
+                datetime.fromisoformat(gateway_response["expires_at"])
+                if gateway_response.get("expires_at")
+                else None
+            ),
         )
 
         self.db.add(payment_order)

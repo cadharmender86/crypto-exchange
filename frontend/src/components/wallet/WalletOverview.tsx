@@ -62,7 +62,11 @@ function formatTransactionDate(value: string) {
   });
 }
 
-export default function WalletOverview() {
+interface WalletOverviewProps {
+  onDepositClick?: () => void;
+}
+
+export default function WalletOverview({ onDepositClick }: WalletOverviewProps) {
   const { accounts, loading: walletLoading, error: walletError } = useWallet();
   const { assets, tickers, loading: marketLoading } = useMarketData();
   const [transactions, setTransactions] = useState<TransactionHistoryItem[]>([]);
@@ -149,7 +153,7 @@ export default function WalletOverview() {
             <p className="mt-1 text-sm text-slate-400">Manage your INR and crypto assets in one place.</p>
           </div>
           <div className="flex gap-2">
-            <Link href="/wallet/deposit" className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold hover:bg-blue-500">Deposit</Link>
+            <button onClick={onDepositClick} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold hover:bg-blue-500">Deposit</button>
             <Link href="/wallet/withdraw" className="rounded-lg border border-white/10 bg-[#111923] px-5 py-2.5 text-sm font-semibold hover:bg-white/10">Withdraw</Link>
             <Link href="/wallet/transfer" className="rounded-lg border border-white/10 bg-[#111923] px-5 py-2.5 text-sm font-semibold hover:bg-white/10">Transfer</Link>
           </div>
@@ -208,7 +212,7 @@ export default function WalletOverview() {
                       <td className="px-5 py-4 text-slate-400"><div>{formatBalance(row.locked, decimals)} <span className="text-xs text-slate-600">{row.symbol}</span></div>{row.assetType === "CRYPTO" && <InrEquivalent value={row.lockedValue} />}</td>
                       <td className="px-5 py-4 font-semibold">{formatInr(row.value)}</td>
                       <td className={`px-5 py-4 ${row.assetType === "FIAT" ? "text-slate-500" : row.change >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.assetType === "FIAT" ? "—" : `${row.change >= 0 ? "+" : ""}${row.change.toFixed(2)}%`}</td>
-                      <td className="px-5 py-4 text-right"><div className="flex justify-end gap-2">{row.assetType === "CRYPTO" ? <><Link href="/buy-sell" className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold hover:bg-blue-500">Trade</Link><Link href="/wallet/withdraw" className="rounded-md border border-white/10 bg-[#111923] px-3 py-2 text-xs font-semibold hover:bg-white/10">Send</Link></> : <><Link href="/wallet/deposit" className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold hover:bg-blue-500">Deposit</Link><Link href="/wallet/withdraw" className="rounded-md border border-white/10 bg-[#111923] px-3 py-2 text-xs font-semibold hover:bg-white/10">Withdraw</Link></>}</div></td>
+                      <td className="px-5 py-4 text-right"><div className="flex justify-end gap-2">{row.assetType === "CRYPTO" ? <><Link href="/buy-sell" className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold hover:bg-blue-500">Trade</Link><Link href="/wallet/withdraw" className="rounded-md border border-white/10 bg-[#111923] px-3 py-2 text-xs font-semibold hover:bg-white/10">Send</Link></> : <><button onClick={onDepositClick} className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold hover:bg-blue-500">Deposit</button><Link href="/wallet/withdraw" className="rounded-md border border-white/10 bg-[#111923] px-3 py-2 text-xs font-semibold hover:bg-white/10">Withdraw</Link></>}</div></td>
                     </tr>
                   );
                 })}

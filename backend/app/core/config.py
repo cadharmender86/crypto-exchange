@@ -1,9 +1,11 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
 class Settings(BaseSettings):
+
     app_name: str = "BitNova Exchange API"
     app_version: str = "0.1.0"
     environment: str = "development"
@@ -15,6 +17,11 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://bitnova:bitnova_password"
         "@localhost:5432/bitnova"
     )
+
+    # frontend_url: str = Field(
+    #         default="http://localhost:3000",
+    #         alias="FRONTEND_URL",
+    # )
 
     redis_url: str = "redis://localhost:6379/0"
 
@@ -81,11 +88,13 @@ class Settings(BaseSettings):
     # Cashfree Payment Gateway
     # -----------------------------------------
 
-    cashfree_env: str = "sandbox"  # or "production"
+    cashfree_environment: str = "sandbox"  # or "production"
 
     cashfree_app_id: str = ""
 
     cashfree_secret_key: str = ""
+
+    frontend_url: str = "http://localhost:3000"
 
     cashfree_api_base: str = "https://sandbox.cashfree.com/pg"
 

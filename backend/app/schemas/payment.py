@@ -12,7 +12,7 @@ class CreatePaymentOrderRequest(BaseModel):
 class PaymentOrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    order_id: str
+    gateway_order_id: str
 
     payment_session_id: str
 
