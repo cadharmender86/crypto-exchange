@@ -77,6 +77,22 @@ class Settings(BaseSettings):
     ethereum_withdrawal_gas_limit: int = 60000
     ethereum_withdrawal_max_retries: int = 3
 
+    # -----------------------------------------
+    # Cashfree Payment Gateway
+    # -----------------------------------------
+
+    cashfree_env: str = "sandbox"  # or "production"
+
+    cashfree_app_id: str = ""
+
+    cashfree_secret_key: str = ""
+
+    cashfree_api_base: str = "https://sandbox.cashfree.com/pg"
+
+    cashfree_webhook_secret: str = ""
+
+    payment_order_expiry_minutes: int = 20
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

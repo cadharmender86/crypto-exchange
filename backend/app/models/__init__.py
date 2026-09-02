@@ -55,6 +55,8 @@ from app.models.fiat_deposit import (
     FiatDepositStatus,
 )
 
+from app.models.payment_order import PaymentOrder
+
 __all__ = [
     # Base
     "Base",

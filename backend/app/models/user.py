@@ -134,3 +134,10 @@ class User(
         lazy="selectin",
         order_by="FiatDeposit.created_at.desc()",
     )
+
+    payment_orders: Mapped[list["PaymentOrder"]] = relationship(
+        "PaymentOrder",
+        back_populates="user",
+        lazy="selectin",
+        order_by="PaymentOrder.created_at.desc()",
+    )
