@@ -1,5 +1,8 @@
 from decimal import Decimal
 from datetime import datetime
+
+# from app.models import payment_order
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.payment_order import (
@@ -10,6 +13,10 @@ from app.models.payment_order import (
 from uuid import uuid4
 from app.models.user import User
 from app.services.gateways.cashfree import CashfreeGateway
+from app.models.payment_order import (
+    PaymentOrder,
+    PaymentOrderStatus,
+)
 
 
 class PaymentService:
@@ -49,6 +56,47 @@ class PaymentService:
         )
 
         self.db.add(payment_order)
+        await self.db.commit()
+        await self.db.refresh(payment_order)
+
+        return payment_order
+
+    # ----------------------------------
+    # Verify webhook payment event
+# ----------------------------------
+
+    async def process_cashfree_webhook(self, payload: dict):
+        payment = payload["data"]["payment"]
+        order = payload["data"]["order"]
+
+        result = await self.db.execute(
+            select(PaymentOrder).where(
+                PaymentOrder.gateway_order_id == order["order_id"]
+            )
+        )
+
+        payment_order = result.scalar_one_or_none()
+
+        if payment_order is None:
+            raise ValueError("Payment order not found.")
+
+        # Idempotency: Ignore duplicate successful webhook
+        if payment_order.status == PaymentOrderStatus.SUCCESS:
+            return payment_order
+
+        payment_order.gateway_payment_id = payment["cf_payment_id"]
+
+        status = payment["payment_status"]
+
+        if status == "SUCCESS":
+            payment_order.status = PaymentOrderStatus.SUCCESS
+        elif status == "FAILED":
+            payment_order.status = PaymentOrderStatus.FAILED
+        elif status == "CANCELLED":
+            payment_order.status = PaymentOrderStatus.CANCELLED
+        else:
+            payment_order.status = PaymentOrderStatus.PENDING
+
         await self.db.commit()
         await self.db.refresh(payment_order)
 

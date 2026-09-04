@@ -100,6 +100,8 @@ class Settings(BaseSettings):
 
     cashfree_webhook_secret: str = ""
 
+    cashfree_verify_webhook_signature: bool = True
+
     payment_order_expiry_minutes: int = 20
 
     model_config = SettingsConfigDict(

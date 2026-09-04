@@ -23,6 +23,7 @@ from app.api.v1.admin_withdrawals import router as admin_withdrawals_router
 from app.api.v1.admin_rbac import router as admin_rbac_router
 from app.api.v1.fiat_deposits import router as fiat_deposits_router
 from app.api.v1.payments import router as payments_router
+from app.api.v1.webhooks import router as webhook_router
 
 api_router = APIRouter()
 
@@ -31,6 +32,7 @@ api_router.include_router(accounts_router)
 api_router.include_router(deposits_router)
 api_router.include_router(fiat_deposits_router)
 api_router.include_router(payments_router, prefix="/payments", tags=["Payments"],)
+api_router.include_router(webhook_router)
 api_router.include_router(withdrawals_router)
 api_router.include_router(ledger_router)
 api_router.include_router(transactions_router)
