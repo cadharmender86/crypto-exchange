@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, Numeric, String
+from sqlalchemy import Enum as SqlEnum, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 # IMPORTANT: Base comes from app.models.base, not app.core.database
 from app.models.base import Base
 
-
+class LedgerEntryType(str, Enum):
+    CREDIT = "CREDIT"
+    DEBIT = "DEBIT"
+    
 class LedgerEntry(Base):
     __tablename__ = "ledger_entries"
 
@@ -35,8 +39,8 @@ class LedgerEntry(Base):
         index=True,
     )
 
-    entry_type: Mapped[str] = mapped_column(
-        String(10),
+    entry_type: Mapped[LedgerEntryType] = mapped_column(
+        SqlEnum(LedgerEntryType, name="ledger_entry_type_enum"),
         nullable=False,
     )
 
@@ -51,4 +55,7 @@ class LedgerEntry(Base):
         back_populates="ledger_entries",
     )
 
-    account: Mapped["Account"] = relationship("Account")
+    account: Mapped["Account"] = relationship(
+        "Account",
+        back_populates="ledger_entries",
+        )

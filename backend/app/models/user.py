@@ -141,3 +141,10 @@ class User(
         lazy="selectin",
         order_by="PaymentOrder.created_at.desc()",
     )
+
+    ledger_transactions: Mapped[list["LedgerTransaction"]] = relationship(
+        "LedgerTransaction",
+        back_populates="user",
+        lazy="selectin",
+        order_by="LedgerTransaction.created_at.desc()",
+    )

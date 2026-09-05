@@ -1,10 +1,17 @@
 from decimal import Decimal
 from uuid import UUID, uuid4
+from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.ledger_entry import LedgerEntry
-from app.models.ledger_transaction import LedgerTransaction
+# from app.models.account import Account
+from app.models.ledger_entry import LedgerEntry, LedgerEntryType
+from app.models.ledger_transaction import (
+    LedgerTransaction,
+    LedgerTransactionType,
+    LedgerTransactionStatus,
+)
+from app.services.balance_service import BalanceService
 
 
 class LedgerService:
@@ -13,7 +20,9 @@ class LedgerService:
     async def create_transaction(
         db: AsyncSession,
         *,
-        transaction_type: str,
+        user_id: UUID,
+        reference: str | None = None,
+        transaction_type: LedgerTransactionType,
         entries: list[dict],
         description: str | None = None,
     ) -> LedgerTransaction:
@@ -55,10 +64,22 @@ class LedgerService:
                 f"credit={credit_total}"
             )
 
+        existing = await db.execute(
+            select(LedgerTransaction).where(
+                LedgerTransaction.reference == reference
+            )
+        )
+
+        existing_transaction = existing.scalar_one_or_none()
+
+        if existing_transaction:
+            return existing_transaction
+
         transaction = LedgerTransaction(
-            reference=f"{transaction_type}-{uuid4().hex[:16].upper()}",
+            user_id=user_id,
+            reference=reference or f"{transaction_type.value}-{uuid4().hex[:16].upper()}",
             transaction_type=transaction_type,
-            status="POSTED",
+            status=LedgerTransactionStatus.POSTED,
             description=description,
         )
 
@@ -67,6 +88,19 @@ class LedgerService:
         await db.flush()
 
         for entry in entries:
+
+            account = await BalanceService.get_locked_account(
+                db,
+                entry["account_id"],
+            )
+
+            amount = Decimal(str(entry["amount"]))
+
+            if entry["entry_type"] == LedgerEntryType.CREDIT:
+                await BalanceService.credit(account,amount)
+
+            elif entry["entry_type"] == LedgerEntryType.DEBIT:
+                await BalanceService.debit(account, amount)    
 
             ledger_entry = LedgerEntry(
                 transaction_id=transaction.id,

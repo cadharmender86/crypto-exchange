@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from uuid import UUID
 
 # from app.models import payment_order
@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.account import Account
 from app.models.asset import Asset
-# from app.models.fiat_account import FiatAccount
+from app.services.ledger_service import LedgerService
+from app.models.ledger_transaction import LedgerTransactionType
+from app.models.ledger_entry import LedgerEntryType
 # from app.models.payment_order import PaymentOrderStatus
-from app.services.balance_service import BalanceService
+# from app.services.balance_service import BalanceService
 from app.models.payment_order import (
     PaymentGateway,
     PaymentOrder,
@@ -22,11 +24,6 @@ from app.services.gateways.cashfree import CashfreeGateway
 # from app.models.payment_order import (
     # PaymentOrder,
     # PaymentOrderStatus,
-# )
-# from app.models.fiat_transaction import (
-    # FiatTransaction,
-    # FiatTransactionType,
-    # FiatTransactionStatus,
 # )
 
 class PaymentService:
@@ -122,23 +119,53 @@ class PaymentService:
 
         account = result.scalar_one_or_none()
 
+        # Find System Treasury INR account
+        treasury_result = await self.db.execute(
+            select(Account).where(
+                Account.asset_id == inr_asset.id,
+                Account.account_type == "SYSTEM_TREASURY",
+            )
+            .with_for_update()
+        )
+
+        treasury_account = treasury_result.scalar_one_or_none()
+
+        if treasury_account is None:
+            raise ValueError("System treasury INR account not found.")
+
         if account is None:
             raise ValueError("INR account not found.")
 
         if payment_status == "SUCCESS":
-            print("=== CASHFREE SUCCESS WEBHOOK ===")
-            print("Order:", gateway_order_id)
-            print("Amount:", payment_order.amount)
-
-            print("INR balance BEFORE:", account.available_balance)
-
             # Credit INR balance atomically
-            await BalanceService.credit(
-                account,
-                payment_order.amount,
+            # await BalanceService.credit(
+            #     account,
+            #     payment_order.amount,
+            # )
+            # Update balances atomically
+            treasury_account.available_balance -= payment_order.amount
+            account.available_balance += payment_order.amount
+            ledger_transaction = await LedgerService.create_transaction(
+                db=self.db,
+                user_id=payment_order.user_id,
+                reference=f"CASHFREE:{cf_payment_id}",
+                transaction_type=LedgerTransactionType.INR_DEPOSIT,
+                description=f"Cashfree deposit: {gateway_order_id}",
+                entries=[
+                    {
+                        "account_id": account.id,
+                        "entry_type": LedgerEntryType.CREDIT,
+                        "amount": payment_order.amount,
+                    },
+                    {
+                        "account_id": treasury_account.id,
+                        "entry_type": LedgerEntryType.DEBIT,
+                        "amount": payment_order.amount,
+                    },
+                ],
             )
 
-            print("INR balance AFTER :", account.available_balance)
+            # print("INR balance AFTER :", account.available_balance)
 
             #Ledger entry
             # fiat_transaction = FiatTransaction(
@@ -160,7 +187,10 @@ class PaymentService:
             # Update payment order first
             payment_order.status = PaymentOrderStatus.SUCCESS
             payment_order.gateway_payment_id = cf_payment_id
-            payment_order.completed_at = datetime.now(UTC)
+            payment_order.completed_at = datetime.now(timezone.utc)
+
+            # TODO (Phase 8.3):
+            # payment_order.ledger_transaction_id = ledger_transaction.id
             
 
         elif payment_status == "FAILED":

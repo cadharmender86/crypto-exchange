@@ -93,3 +93,12 @@ class Account(Base):
         "Asset",
         back_populates="accounts",
     )
+
+    # -----------------------------
+    # Unified Ledger (Phase 8.1)
+    # -----------------------------
+    ledger_entries: Mapped[list["LedgerEntry"]] = relationship(
+        "LedgerEntry",
+        back_populates="account",
+        lazy="selectin",
+    )
