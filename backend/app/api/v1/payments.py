@@ -7,6 +7,8 @@ from app.models.user import User
 from app.schemas.payment import (
     CreatePaymentOrderRequest,
     PaymentOrderResponse,
+    PaymentHistoryItem,
+    PaymentHistoryResponse,
 )
 from app.services.payment_service import PaymentService
 
@@ -39,4 +41,23 @@ async def create_payment_order(
         currency=order.currency,
         status=order.status.value,
         expires_at=order.expires_at,
+    )
+
+@router.get(
+    "/history",
+    response_model=PaymentHistoryResponse,
+)
+async def payment_history(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = PaymentService(db)
+
+    orders = await service.get_payment_history(current_user.id)
+
+    return PaymentHistoryResponse(
+        items=[
+            PaymentHistoryItem.model_validate(order, from_attributes=True)
+            for order in orders
+        ]
     )

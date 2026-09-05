@@ -22,29 +22,19 @@ export function useWallet() {
   }, []);
 
   useEffect(() => {
-    let active = true;
 
-    getAccountBalances()
-      .then((accountData) => {
-        if (!active) return;
-        setAccounts(Array.isArray(accountData) ? accountData : []);
-        setError(null);
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Failed to load wallet");
-        setAccounts([]);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    // Inital wallet load
+    void loadWallet();
 
-    const refreshWallet = () => { void loadWallet(); };
-    window.addEventListener("order-created", refreshWallet);
+    const handleOrderCreated = async () => {
+      console.log("Wallet refresh event received");
+      await loadWallet();
+    };
+
+    window.addEventListener("order-created", handleOrderCreated);
 
     return () => {
-      active = false;
-      window.removeEventListener("order-created", refreshWallet);
+      window.removeEventListener("order-created", handleOrderCreated);
     };
   }, [loadWallet]);
 

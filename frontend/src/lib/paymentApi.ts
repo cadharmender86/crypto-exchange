@@ -1,17 +1,32 @@
-import { apiFetch } from "./api";
+import { apiFetch, getAccessToken } from "./api";
+
 import type {
   CreatePaymentOrderRequest,
   PaymentOrderResponse,
+  PaymentHistoryResponse,
 } from "@/types/payment";
 
 export async function createPaymentOrder(
-  payload: CreatePaymentOrderRequest
+  amount: number
 ): Promise<PaymentOrderResponse> {
-  return apiFetch("/api/v1/payments/orders", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const token = getAccessToken();
+
+  return apiFetch<PaymentOrderResponse>(
+    "/payments/orders",
+    {
+      method: "POST",
+      body: JSON.stringify({ amount }),
     },
-    body: JSON.stringify(payload),
-  });
+    token ?? undefined
+  );
+}
+
+export async function getPaymentHistory(): Promise<PaymentHistoryResponse> {
+  const token = getAccessToken();
+
+  return apiFetch<PaymentHistoryResponse>(
+    "/payments/history",
+    {},
+    token ?? undefined
+  );
 }

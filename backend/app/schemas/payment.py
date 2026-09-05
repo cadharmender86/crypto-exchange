@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -24,6 +25,23 @@ class PaymentOrderResponse(BaseModel):
 
     expires_at: datetime
 
+class PaymentHistoryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    gateway_order_id: str
+    gateway_payment_id: str | None
+
+    amount: Decimal
+    currency: str
+
+    status: str
+
+    created_at: datetime
+    completed_at: datetime | None
+
+class PaymentHistoryResponse(BaseModel):
+    items: list[PaymentHistoryItem]
 
 class PaymentStatusResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

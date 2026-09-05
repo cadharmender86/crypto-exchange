@@ -4,11 +4,13 @@ import { useState } from "react";
 import { X, ShieldCheck, Landmark } from "lucide-react";
 import { getAccessToken } from "@/lib/api";
 import { getCashfree } from "@/lib/cashfree";
+import { getPaymentHistory } from "@/lib/paymentApi";
 // import { createPaymentOrder } from "@/lib/paymentApi";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  onPaymentSuccess: () => Promise<void>;
 }
 
 const createPaymentOrder = async (amount: number) => {
@@ -34,14 +36,72 @@ const createPaymentOrder = async (amount: number) => {
   return data;
 };
 
-export default function DepositInrModal({ open, onClose }: Props) {
+export default function DepositInrModal({ open, onClose, onPaymentSuccess }: Props) {
   const [amount, setAmount] = useState(500);
   const [loading, setLoading] = useState(false);
   const isValidAmount = amount >= 100 && amount <= 200000;
   const [error, setError] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
   if (!open) return null;
+
+  async function waitForPaymentSuccess(orderId: string) {
+    setIsCheckingPayment(true);
+
+    const maxAttempts = 24;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      console.log(`Polling attempt ${attempt}`, orderId);
+
+      try {
+        // Fetch fresh payment history every poll.
+        const { items } = await getPaymentHistory();
+
+        const payment = items.find(
+          (item) => item.gateway_order_id === orderId
+        );
+
+        console.log("Matched payment:", {
+          orderId: payment?.gateway_order_id,
+          status: payment?.status,
+          gatewayPaymentId: payment?.gateway_payment_id,
+        });
+
+        if (!payment) {
+          await new Promise((r) => setTimeout(r, 5000));
+          continue;
+        }
+
+        if (payment.status === "SUCCESS") {
+          console.log("Payment SUCCESS");
+
+          window.dispatchEvent(new Event("order-created"));
+
+          await onPaymentSuccess();
+
+          setIsCheckingPayment(false);
+          onClose();
+          return;
+        }
+
+        if (payment.status === "FAILED") {
+          throw new Error("Payment failed.");
+        }
+
+        if (payment.status === "CANCELLED") {
+          throw new Error("Payment cancelled.");
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+
+    setIsCheckingPayment(false);
+    setError("Payment confirmation timed out.");
+  }
 
   async function handleContinue() {
   setError("");
@@ -69,14 +129,25 @@ export default function DepositInrModal({ open, onClose }: Props) {
 
     const result = await cashfree.checkout({
         paymentSessionId: order.payment_session_id,
-        redirectTarget: "_self",
+        redirectTarget: "_modal",
     });
 
     console.log("Checkout result:", result);
     console.log("After checkout");
     // Phase 7.3
     // Cashfree checkout will open here.
-} catch (err: any) {
+    
+
+    // Order creation is finished.
+    setLoading(false);
+
+    // Wait for the Cashfree modal to close.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Start polling for webhook confirmation
+    await waitForPaymentSuccess(order.gateway_order_id);
+
+  } catch (err: any) {
     console.error(err);
 
     setError(
@@ -182,7 +253,7 @@ export default function DepositInrModal({ open, onClose }: Props) {
 
         <button
             onClick={handleContinue}
-            disabled={!isValidAmount || loading}
+            disabled={!isValidAmount || loading || isCheckingPayment}
             className={`w-full rounded-xl py-3 font-medium text-white transition ${
                 isValidAmount
                     ? "bg-emerald-600 hover:bg-emerald-500"
@@ -191,7 +262,9 @@ export default function DepositInrModal({ open, onClose }: Props) {
         >
             {loading
                 ? "Creating Order..."
-                : `Continue with ₹${amount.toLocaleString("en-IN")}`}
+                : isCheckingPayment
+                  ? "Waiting for payment confirmation..."
+                  : `Continue with ₹${amount.toLocaleString("en-IN")}`}
         </button>
         </div>
       </div>

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CoinIcon from "@/components/common/CoinIcon";
 import { useWallet } from "@/hooks/useWallet";
+import { getPaymentHistory } from "@/lib/paymentApi";
+import type { PaymentHistoryItem } from "@/types/payment";
 import { getTransactionHistory, type TransactionHistoryItem } from "@/services/history.service";
 import { getMarketAssets, getMarketTicker, type MarketAsset, type MarketTicker } from "@/services/market.service";
 
@@ -64,17 +66,51 @@ function formatTransactionDate(value: string) {
 
 interface WalletOverviewProps {
   onDepositClick?: () => void;
+  // refreshWallet?: number; // Add this prop to trigger re-render when the wallet is refreshed
 }
 
 export default function WalletOverview({ onDepositClick }: WalletOverviewProps) {
-  const { accounts, loading: walletLoading, error: walletError } = useWallet();
+  const { accounts, loading: walletLoading, error: walletError, refreshWallet } = useWallet();  
   const { assets, tickers, loading: marketLoading } = useMarketData();
   const [transactions, setTransactions] = useState<TransactionHistoryItem[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(true);
+
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"ALL" | "CRYPTO" | "FIAT">("ALL");
   const [hideZero, setHideZero] = useState(false);
+
+  async function loadPaymentHistory() {
+    try {
+      setPaymentHistoryLoading(true);
+
+      const response = await getPaymentHistory();
+      setPaymentHistory(response.items);
+    } catch (error) {
+      console.error("Failed to load payment history:", error);
+    } finally {
+      setPaymentHistoryLoading(false);
+    }
+  }
+
+  async function handleDepositSuccess(): Promise<void> {
+    console.log("handleDepositSuccess called");
+
+    await Promise.all([
+      refreshWallet(), // Refresh wallet balances
+      loadPaymentHistory(),
+    ]);   
+
+    console.log("Wallet and payment history refreshed");
+    // Don't close the modal here.
+
+  }
+
+  useEffect(() => {
+    console.log("WalletOverview accounts updated:", accounts);
+  }, [accounts]);
 
   useEffect(() => {
     let active = true;
@@ -92,10 +128,13 @@ export default function WalletOverview({ onDepositClick }: WalletOverviewProps) 
         if (active) setTransactionsLoading(false);
       });
 
+    void loadPaymentHistory();
+    void refreshWallet(); // Load wallet data on component mount 
+
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshWallet]); // Add refreshWallet as a dependency to reload wallet data when it changes
 
   const rows = useMemo(() => {
     const assetMap = new Map(assets.map((asset) => [String(asset.id), asset]));
@@ -223,6 +262,84 @@ export default function WalletOverview({ onDepositClick }: WalletOverviewProps) 
           {loading && <div className="px-5 py-10 text-center text-sm text-slate-500">Loading wallet and market data...</div>}
           {!loading && <div className="flex items-center justify-between border-t border-white/10 px-5 py-3 text-xs text-slate-500"><span>Showing {filteredRows.length} of {rows.length} assets</span><span>INR values are based on live market rates · <span className="text-emerald-400">● Live</span></span></div>}
         </section>
+
+        {/* INR Deposit History */}
+        <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-white">
+              INR Deposit History
+            </h3>
+
+            <span className="text-sm text-zinc-400">
+              {paymentHistory.length} deposits
+            </span>
+          </div>
+
+          {paymentHistoryLoading ? (
+            <div className="py-8 text-center text-zinc-400">
+              Loading payment history...
+            </div>
+          ) : paymentHistory.length === 0 ? (
+            <div className="py-8 text-center text-zinc-500">
+              No INR deposits found.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="border-b border-zinc-800 text-zinc-400">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Amount</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Order ID</th>
+                    <th className="px-3 py-2 text-left">Payment ID</th>
+                    <th className="px-3 py-2 text-left">Created</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {paymentHistory.map((payment) => (
+                    <tr
+                      key={payment.id}
+                      className="border-b border-zinc-800 hover:bg-zinc-800/40"
+                    >
+                      <td className="px-3 py-3 font-medium text-white">
+                        ₹{Number(payment.amount).toLocaleString("en-IN")}
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            payment.status === "SUCCESS"
+                              ? "bg-green-500/20 text-green-400"
+                              : payment.status === "FAILED"
+                              ? "bg-red-500/20 text-red-400"
+                              : payment.status === "PENDING"
+                              ? "bg-yellow-500/20 text-yellow-400"
+                              : "bg-zinc-700 text-zinc-300"
+                          }`}
+                        >
+                          {payment.status}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-3 text-zinc-300">
+                        {payment.gateway_order_id}
+                      </td>
+
+                      <td className="px-3 py-3 text-zinc-400">
+                        {payment.gateway_payment_id ?? "--"}
+                      </td>
+
+                      <td className="px-3 py-3 text-zinc-400">
+                        {new Date(payment.created_at).toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         <section className="mt-5 rounded-xl border border-white/10 bg-[#0d141c] p-5">
           <div className="flex items-center justify-between">
