@@ -1,3 +1,6 @@
+from sqlalchemy import select
+from app.core.database import AsyncSessionLocal
+from app.models.asset import Asset
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.services.binance_market_service import binance_market_service
@@ -5,6 +8,33 @@ from app.services.binance_market_service import binance_market_service
 router = APIRouter(prefix="/market", tags=["Market"])
 
 
+@router.get("/assets")
+async def get_market_assets():
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Asset)
+            .where(Asset.is_active.is_(True))
+            .order_by(Asset.symbol)
+        )
+
+        assets = result.scalars().all()
+
+        return [
+            {
+                "id": str(asset.id),
+                "symbol": asset.symbol,
+                "name": asset.name,
+                "asset_type": asset.asset_type,
+                "decimal_places": asset.decimal_places,
+                "is_active": asset.is_active,
+                "deposit_enabled": asset.deposit_enabled,
+                "withdrawal_enabled": asset.withdrawal_enabled,
+                "trading_enabled": asset.trading_enabled,
+                "is_fiat": asset.asset_type == "FIAT",
+            }
+            for asset in assets
+        ]
+    
 @router.get("/tickers")
 async def get_market_tickers():
     return binance_market_service.snapshot()

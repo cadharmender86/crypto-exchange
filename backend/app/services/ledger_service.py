@@ -1,6 +1,7 @@
 from decimal import Decimal
 from uuid import UUID, uuid4
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -114,3 +115,37 @@ class LedgerService:
         await db.flush()
 
         return transaction
+
+    @staticmethod
+    async def get_user_transactions(
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[LedgerTransaction]:
+
+        result = await db.execute(
+            select(LedgerTransaction)
+            .where(LedgerTransaction.user_id == user_id)
+            .order_by(LedgerTransaction.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        return result.scalars().unique().all()
+
+    @staticmethod
+    async def list_user_transactions(
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> list[LedgerTransaction]:
+
+        result = await db.execute(
+            select(LedgerTransaction)
+            .where(LedgerTransaction.user_id == user_id)
+            .options(selectinload(LedgerTransaction.ledger_entries))
+            .order_by(LedgerTransaction.created_at.desc())
+        )
+
+        return result.scalars().unique().all()
