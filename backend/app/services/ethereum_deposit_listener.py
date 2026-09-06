@@ -8,9 +8,10 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.models.blockchain_cursor import BlockchainCursor
-from app.services.ethereum_withdrawal_broadcaster import (
-    EthereumWithdrawalBroadcaster,
-)
+from app.blockchains.manager import BlockchainManager
+# from app.services.ethereum_withdrawal_broadcaster import (
+#     EthereumWithdrawalBroadcaster,
+# )
 from app.models.wallet_address import WalletAddress
 from app.models.asset import Asset
 from app.services.deposit_service import DepositService
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class EthereumDepositListener:
 
-    NETWORK = "SEPOLIA"
+    NETWORK = "ETHEREUM_SEPOLIA"
     POLL_INTERVAL = 10
 
     TRANSFER_EVENT_TOPIC = Web3.keccak(
@@ -38,7 +39,7 @@ class EthereumDepositListener:
     # }   
 
     def __init__(self):
-        self.rpc = EthereumWithdrawalBroadcaster()
+        self.adapter = BlockchainManager.get_service(self.NETWORK)
 
         # Loaded from database.
         self.supported_tokens = {}
@@ -89,7 +90,9 @@ class EthereumDepositListener:
 
             cursor = await self.get_cursor(db)
 
-            latest_block = await self.rpc.get_latest_block()
+            latest_hex = await self.adapter.rpc_call("eth_blockNumber", [])
+            latest_block = int(latest_hex, 16)
+
 
             if latest_block <= cursor.last_processed_block:
                 logger.info(
@@ -122,8 +125,8 @@ class EthereumDepositListener:
         cursor = result.scalar_one_or_none()
 
         if cursor is None:
-            latest_block = await self.rpc.get_latest_block()
-
+            latest_hex = await self.adapter.rpc_call("eth_blockNumber", [])
+            latest_block = int(latest_hex, 16)
             cursor = BlockchainCursor(
                 network=self.NETWORK,
                 last_processed_block=latest_block,
@@ -146,7 +149,7 @@ class EthereumDepositListener:
 
     async def scan_block(self, db, block_number):
 
-        block = await self.rpc.rpc_call(
+        block = await self.adapter.rpc_call(
             "eth_getBlockByNumber",
             [hex(block_number), False],   # don't fetch full tx objects
         )
@@ -163,7 +166,7 @@ class EthereumDepositListener:
         await self.process_block(db, block_number)
 
     async def process_block(self, db, block_number: int):
-        receipt_logs = await self.rpc.rpc_call(
+        receipt_logs = await self.adapter.rpc_call(
             "eth_getLogs",
             [{
                 "fromBlock": hex(block_number),
