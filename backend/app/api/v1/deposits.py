@@ -9,6 +9,7 @@ from app.models.deposit import Deposit
 from app.schemas.deposit import (
     DepositCreate,
     DepositResponse,
+    DepositAddressResponse,
 )
 from app.services.deposit_service import DepositService
 
@@ -119,3 +120,24 @@ async def get_my_deposit(
         )
 
     return deposit
+
+@router.get(
+    "/address/{asset_symbol}",
+    response_model=DepositAddressResponse,
+)
+async def get_deposit_address(
+    asset_symbol: str,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await DepositService.get_deposit_address(
+            db=db,
+            user_id=current_user.id,
+            asset_symbol=asset_symbol,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )

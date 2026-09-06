@@ -32,4 +32,9 @@ class DepositResponse(BaseModel):
     confirmations: int
     status: str
     ledger_transaction_id: UUID | None
+
+class DepositAddressResponse(BaseModel):
+    asset_symbol: str
+    network: str
+    address: str    
     

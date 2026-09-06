@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class WithdrawalCreate(BaseModel):
-    account_id: UUID
+    # account_id: UUID
     asset_id: UUID
     network: str = Field(min_length=1, max_length=30)
     destination_address: str = Field(min_length=1, max_length=255)

@@ -252,7 +252,16 @@ class EthereumWithdrawalBroadcaster:
 
                 await db.rollback()
 
-                withdrawal.status = WithdrawalService.mark_failed(
+                failed_result = await db.execute(
+                    select(Withdrawal)
+                    .where(Withdrawal.id == withdrawal.id)
+                    .with_for_update()
+                )
+
+                # Reload withdrawal after rollback.
+                withdrawal = failed_result.scalar_one()
+
+                await WithdrawalService.mark_failed(
                     db=db,
                     withdrawal=withdrawal,
                     reason=str(exc),

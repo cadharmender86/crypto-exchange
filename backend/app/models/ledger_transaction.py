@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from app.models.user import User
+# from app.models.user import User
 from sqlalchemy import Enum as SqlEnum, ForeignKey, DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -63,7 +63,7 @@ class LedgerTransaction(Base):
     status: Mapped[LedgerTransactionStatus] = mapped_column(
         SqlEnum(LedgerTransactionStatus, name="ledger_transaction_status_enum"),
         nullable=False,
-        default=LedgerTransactionStatus.POSTED,
+        default=LedgerTransactionStatus.PENDING,
         index=True,
     )
 
@@ -107,6 +107,6 @@ class LedgerTransaction(Base):
     )
 
     user: Mapped["User"] = relationship(
-    "User",
-    back_populates="ledger_transactions",
-)
+        "User",
+        back_populates="ledger_transactions",
+    )

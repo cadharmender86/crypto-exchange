@@ -51,3 +51,51 @@ export function getAccountBalances() {
 
   return apiClient<AccountBalance[]>("/accounts");
 }
+
+export function getWalletDashboard() {
+  if (!hasAccessToken()) {
+    return Promise.resolve({ balances: [] } as WalletDashboard);
+  }
+
+  return apiClient<WalletDashboard>("/wallets/dashboard");
+}
+
+export interface DashboardWalletBalance {
+  account_id: string;
+  asset_id: string;
+  symbol: string;
+  name: string;
+  account_type: string;
+
+  available_balance: string;
+  locked_balance: string;
+
+  is_fiat: boolean;
+}
+
+export interface WalletDashboard {
+  balances: DashboardWalletBalance[];
+}
+
+export interface WalletTransaction {
+  id: string;
+  reference: string;
+  transaction_type: string;
+  status: string;
+  description: string;
+  created_at: string;
+  ledger_entries: {
+    id: string;
+    account_id: string;
+    entry_type: string;
+    amount: string;
+  }[];
+}
+
+export function getWalletTransactions() {
+  if (!hasAccessToken()) {
+    return Promise.resolve([] as WalletTransaction[]);
+  }
+
+  return apiClient<WalletTransaction[]>("/wallets/transactions");
+}

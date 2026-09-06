@@ -18,6 +18,7 @@ from app.schemas.wallet import (
 from app.services.wallet_service import WalletService
 from app.schemas.ledger import LedgerTransactionResponse
 from app.services.ledger_service import LedgerService
+from app.schemas.wallet_dashboard import WalletDashboardResponse
 
 
 router = APIRouter(
@@ -71,6 +72,19 @@ async def list_wallets(
 
     return await WalletService.list_user_wallets(
         db,
+        user_id=current_user.id,
+    )
+
+@router.get(
+    "/dashboard",
+    response_model=WalletDashboardResponse,
+)
+async def get_wallet_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await WalletService.get_wallet_dashboard(
+        db=db,
         user_id=current_user.id,
     )
 

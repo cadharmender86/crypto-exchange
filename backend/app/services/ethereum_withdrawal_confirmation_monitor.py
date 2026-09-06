@@ -7,6 +7,8 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.models.withdrawal import Withdrawal, WithdrawalStatus
+from app.services.withdrawal_service import WithdrawalService
+from app.services.ledger_service import LedgerService
 from app.services.ethereum_withdrawal_broadcaster import (
     EthereumWithdrawalBroadcaster,
 )
@@ -71,13 +73,16 @@ class EthereumWithdrawalConfirmationMonitor:
                 # Transaction was mined but reverted.
                 if receipt["status"] == "0x0":
 
-                    withdrawal.status = WithdrawalStatus.FAILED.value
-                    withdrawal.failure_reason = "Blockchain transaction reverted"
+                    await WithdrawalService.mark_failed(
+                        db,
+                        withdrawal,
+                        "Blockchain transaction reverted",
+                    )
 
                     logger.error(
                         "Withdrawal %s reverted on-chain.",
                         withdrawal.id,
-    )
+                    )
 
                     continue    
                     
@@ -97,6 +102,11 @@ class EthereumWithdrawalConfirmationMonitor:
 
                     withdrawal.status = WithdrawalStatus.COMPLETED.value
                     withdrawal.completed_at = datetime.now(timezone.utc)
+
+                    await LedgerService.mark_posted(
+                        db,
+                        withdrawal.ledger_transaction_id,
+                    )
 
                     logger.info(
                         "Withdrawal %s COMPLETED.",

@@ -262,3 +262,40 @@ class DepositService:
         deposit.status = DepositService.CREDITED
         await db.flush()
         return deposit
+    
+    @staticmethod
+    async def get_deposit_address(
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        asset_symbol: str,
+    ):
+        asset_symbol = asset_symbol.upper()
+
+        asset_result = await db.execute(
+            select(Asset).where(Asset.symbol == asset_symbol)
+        )
+        asset = asset_result.scalar_one_or_none()
+
+        if asset is None:
+            raise ValueError("Asset not found")
+
+        wallet_result = await db.execute(
+            select(WalletAddress)
+            .where(
+                WalletAddress.user_id == user_id,
+                WalletAddress.asset_id == asset.id,
+            )
+            .order_by(WalletAddress.network.desc())
+        )
+
+        wallet = wallet_result.scalars().first()
+
+        if wallet is None:
+            raise ValueError(f"No deposit address assigned for {asset_symbol}")
+
+        return {
+            "asset_symbol": asset.symbol,
+            "network": wallet.network,
+            "address": wallet.address,
+        }

@@ -10,6 +10,8 @@ from app.models.asset import Asset
 from app.models.withdrawal import Withdrawal, WithdrawalStatus
 from app.services.balance_service import BalanceService
 from app.services.ledger_service import LedgerService
+from app.models.ledger_transaction import LedgerTransactionType
+from app.models.ledger_entry import LedgerEntryType
 
 class WithdrawalService:
     """
@@ -179,23 +181,23 @@ class WithdrawalService:
 
         transaction = await LedgerService.create_transaction(
             db,
-            transaction_type="WITHDRAWAL",
+            user_id=user_id,
+            reference=f"WITHDRAWAL:{withdrawal.id}",
+            transaction_type=LedgerTransactionType.CRYPTO_WITHDRAWAL,
+            description=f"Customer withdrawal {network}:{destination_address}",
             entries=[
                 {
                     "account_id": customer.id,
-                    "entry_type": "DEBIT",
+                    "entry_type": LedgerEntryType.DEBIT,
                     "amount": amount,
                 },
                 {
                     "account_id": treasury.id,
-                    "entry_type": "CREDIT",
+                    "entry_type": LedgerEntryType.CREDIT,
                     "amount": amount,
                 },
             ],
-            description=(
-                f"Customer withdrawal "
-                f"{network}:{destination_address}"
-            ),
+            
         )
 
         withdrawal.ledger_transaction_id = transaction.id
@@ -264,8 +266,24 @@ class WithdrawalService:
         Mark a withdrawal as failed during blockchain broadcast.
         """
 
+        if withdrawal.status == WithdrawalStatus.FAILED.value:
+            return withdrawal
+
+        account = await BalanceService.get_locked_account(
+            db,
+            withdrawal.account_id,
+        )
+
+        # Return locked funds to customer.
+        await BalanceService.unlock(account, withdrawal.amount)
+
         withdrawal.status = WithdrawalStatus.FAILED.value
         withdrawal.failure_reason = reason[:255]
+
+        await LedgerService.mark_failed(
+            db,
+            withdrawal.ledger_transaction_id,
+        )
 
         await db.flush()
 
@@ -296,9 +314,6 @@ class WithdrawalService:
         db: AsyncSession,
         withdrawal: Withdrawal,
     ) -> Withdrawal:
-        """
-        Reject a pending withdrawal and unlock customer funds.
-        """
 
         if withdrawal.status != WithdrawalStatus.PENDING.value:
             raise ValueError(
@@ -310,7 +325,43 @@ class WithdrawalService:
             withdrawal.account_id,
         )
 
+        # Return locked funds to available balance.
         await BalanceService.unlock(account, withdrawal.amount)
+
+        # Cancel the pending ledger transaction.
+        await LedgerService.mark_cancelled(
+            db,
+            withdrawal.ledger_transaction_id,
+        )
+
+        # treasury_result = await db.execute(
+        #     select(Account).where(
+        #         Account.asset_id == withdrawal.asset_id,
+        #         Account.account_type == WithdrawalService.SYSTEM_ACCOUNT_TYPE,
+        #     )
+        # )
+
+        # treasury = treasury_result.scalar_one()
+
+        # await LedgerService.create_transaction(
+        #     db=db,
+        #     user_id=withdrawal.user_id,
+        #     reference=f"WITHDRAWAL_REJECT:{withdrawal.id}",
+        #     transaction_type=LedgerTransactionType.REFUND,
+        #     description="Withdrawal rejected refund",
+        #     entries=[
+        #         {
+        #             "account_id": treasury.id,
+        #             "entry_type": LedgerEntryType.DEBIT,
+        #             "amount": withdrawal.amount,
+        #         },
+        #         {
+        #             "account_id": account.id,
+        #             "entry_type": LedgerEntryType.CREDIT,
+        #             "amount": withdrawal.amount,
+        #         },
+        #     ],
+        # )
 
         withdrawal.status = WithdrawalStatus.REJECTED.value
 

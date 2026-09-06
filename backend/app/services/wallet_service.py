@@ -1,9 +1,11 @@
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.account import Account
 from app.models.wallet import Wallet
 
 
@@ -106,3 +108,39 @@ class WalletService:
         )
 
         return list(result.scalars().all())
+
+    @staticmethod
+    async def get_wallet_dashboard(
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+    ):
+        result = await db.execute(
+            select(Account)
+            .options(selectinload(Account.asset))
+            .where(
+                Account.user_id == user_id,
+                Account.account_type == "CUSTOMER",
+            )
+            .order_by(Account.created_at.asc())
+        )
+
+        accounts = result.scalars().all()
+
+        balances = []
+
+        for account in accounts:
+            balances.append(
+                {
+                    "account_id": account.id,
+                    "asset_id": account.asset.id,
+                    "symbol": account.asset.symbol,
+                    "name": account.asset.name,
+                    "account_type": account.account_type,
+                    "available_balance": account.available_balance,
+                    "locked_balance": account.locked_balance,
+                    "is_fiat": account.asset.asset_type == "FIAT",
+                }
+            )
+
+        return {"balances": balances}

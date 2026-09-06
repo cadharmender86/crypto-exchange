@@ -13,6 +13,9 @@ from app.models.ledger_transaction import (
     LedgerTransactionStatus,
 )
 from app.services.balance_service import BalanceService
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class LedgerService:
@@ -25,6 +28,7 @@ class LedgerService:
         reference: str | None = None,
         transaction_type: LedgerTransactionType,
         entries: list[dict],
+        status: LedgerTransactionStatus = LedgerTransactionStatus.PENDING,
         description: str | None = None,
     ) -> LedgerTransaction:
 
@@ -76,11 +80,19 @@ class LedgerService:
         if existing_transaction:
             return existing_transaction
 
+        logger.warning(
+            "LEDGER CREATE | ref=%s | type=%s | status=%s",
+            reference,
+            transaction_type.value,
+            status.value,
+        )
+
+            
         transaction = LedgerTransaction(
             user_id=user_id,
             reference=reference or f"{transaction_type.value}-{uuid4().hex[:16].upper()}",
             transaction_type=transaction_type,
-            status=LedgerTransactionStatus.POSTED,
+            status=status,
             description=description,
         )
 
@@ -149,3 +161,35 @@ class LedgerService:
         )
 
         return result.scalars().unique().all()
+
+    @staticmethod
+    async def mark_posted(db: AsyncSession, transaction_id: UUID):
+        transaction = await db.get(LedgerTransaction, transaction_id)
+
+        if transaction is None:
+            raise ValueError("Ledger transaction not found")
+
+        transaction.status = LedgerTransactionStatus.POSTED
+        await db.flush()
+
+
+    @staticmethod
+    async def mark_failed(db: AsyncSession, transaction_id: UUID):
+        transaction = await db.get(LedgerTransaction, transaction_id)
+
+        if transaction is None:
+            raise ValueError("Ledger transaction not found")
+
+        transaction.status = LedgerTransactionStatus.FAILED
+        await db.flush()
+
+
+    @staticmethod
+    async def mark_cancelled(db: AsyncSession, transaction_id: UUID):
+        transaction = await db.get(LedgerTransaction, transaction_id)
+
+        if transaction is None:
+            raise ValueError("Ledger transaction not found")
+
+        transaction.status = LedgerTransactionStatus.CANCELLED
+        await db.flush()

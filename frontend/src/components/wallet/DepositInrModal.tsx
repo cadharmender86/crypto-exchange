@@ -1,15 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { X, ShieldCheck, Landmark } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, ShieldCheck, Landmark, Copy, CheckCircle } from "lucide-react";
 import { getAccessToken } from "@/lib/api";
 import { getCashfree } from "@/lib/cashfree";
 import { getPaymentHistory } from "@/lib/paymentApi";
+import { createINRDeposit } from "@/services/payment.service";
+import { getDepositAddress } from "@/services/deposit.service";
 // import { createPaymentOrder } from "@/lib/paymentApi";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  asset: {
+    symbol: string;
+    name: string;
+    is_fiat: boolean;
+  } | null;
   onPaymentSuccess: () => Promise<void>;
 }
 
@@ -36,15 +43,45 @@ const createPaymentOrder = async (amount: number) => {
   return data;
 };
 
-export default function DepositInrModal({ open, onClose, onPaymentSuccess }: Props) {
+export default function DepositInrModal({ open, onClose, asset, onPaymentSuccess }: Props) {
   const [amount, setAmount] = useState(500);
   const [loading, setLoading] = useState(false);
-  const isValidAmount = amount >= 100 && amount <= 200000;
   const [error, setError] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
-  if (!open) return null;
+  const [depositAddress, setDepositAddress] = useState("");
+  const [network, setNetwork] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const isValidAmount = amount >= 100 && amount <= 200000;
+  
+  if (!open || !asset) return null;
+
+  // const [amount, setAmount] = useState("");
+  // const [loading, setLoading] = useState(false);
+  
+
+  useEffect(() => {
+  if (!open || !asset) return;
+
+  // setAmount(500);
+  setDepositAddress("");
+  setNetwork("");
+  setCopied(false);
+
+  //Only for crypto assets
+  if (!asset.is_fiat) {
+    getDepositAddress(asset.symbol)
+      .then((data) => {
+        setDepositAddress(data.address);
+        setNetwork(data.network);
+      })
+      .catch((error) => {
+        console.error("Unable to load deposit address", error);
+      });
+  }
+}, [open, asset]);
 
   async function waitForPaymentSuccess(orderId: string) {
     setIsCheckingPayment(true);
