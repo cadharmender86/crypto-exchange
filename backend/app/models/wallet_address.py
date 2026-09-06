@@ -10,6 +10,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Integer
 
 from app.models.base import Base
 
@@ -65,6 +66,12 @@ class WalletAddress(Base):
     network: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
+    )
+
+    derivation_index: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        index=True,
     )
 
     address: Mapped[str] = mapped_column(

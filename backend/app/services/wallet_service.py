@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.account import Account
 from app.models.wallet import Wallet
+from app.models.asset import Asset
+from app.services.ethereum_wallet_service import EthereumWalletService
 
 
 class WalletService:
@@ -58,6 +60,22 @@ class WalletService:
             )
 
         await db.refresh(wallet)
+
+        # Automatically allocate Ethereum deposit address
+        asset_result = await db.execute(
+            select(Asset).where(
+                Asset.symbol == "USDT"
+            )
+        )
+
+        usdt_asset = asset_result.scalar_one()
+
+        await EthereumWalletService.allocate_deposit_address(
+            db=db,
+            wallet_id=wallet.id,
+            user_id=user_id,
+            asset_id=usdt_asset.id,
+        )
 
         return wallet
 

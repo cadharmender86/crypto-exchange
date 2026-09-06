@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from app.blockchains.base import BlockchainAdapter
+# from app.services.ethereum_wallet_service import EthereumWalletService
 from app.services.ethereum_withdrawal_broadcaster import (
     EthereumWithdrawalBroadcaster,
 )
@@ -11,13 +12,17 @@ class EthereumAdapter(BlockchainAdapter):
 
     def __init__(self):
         self.rpc = EthereumWithdrawalBroadcaster()
+        # self.wallet_service = EthereumWalletService()
 
     # Wallets
     async def generate_wallet(self, user_id: str):
-        raise NotImplementedError()
+        return await self.wallet_service.generate_wallet(user_id=user_id)
 
     async def get_balance(self, address: str, asset: str):
-        raise NotImplementedError()
+        return await self.wallet_service.get_balance(
+            address=address,
+            asset=asset,
+        )
 
     # Deposits
     async def scan_deposits(self, from_block: int, to_block: int):
@@ -33,6 +38,6 @@ class EthereumAdapter(BlockchainAdapter):
     async def estimate_fee(self, **kwargs) -> Decimal:
         raise NotImplementedError()
 
-    # Generic RPC
+    # RPC
     async def rpc_call(self, method, params):
         return await self.rpc.rpc_call(method, params)
