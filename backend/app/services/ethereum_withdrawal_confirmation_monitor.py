@@ -1,9 +1,9 @@
 import asyncio
 import logging
-
-from datetime import datetime, timezone
+import os
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
 from app.models.withdrawal import Withdrawal, WithdrawalStatus
@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 class EthereumWithdrawalConfirmationMonitor:
 
-    POLL_INTERVAL = 15
-    REQUIRED_CONFIRMATIONS = 3
+    POLL_INTERVAL = int(os.getenv("WITHDRAWAL_CONFIRMATION_POLL_INTERVAL", "15"))
+    REQUIRED_CONFIRMATIONS = int(os.getenv("ETH_CONFIRMATIONS_REQUIRED", "1"))
 
     def __init__(self):
         self.rpc = EthereumWithdrawalBroadcaster()
@@ -43,8 +43,12 @@ class EthereumWithdrawalConfirmationMonitor:
 
             result = await db.execute(
                 select(Withdrawal).where(
-                    Withdrawal.status == WithdrawalStatus.BROADCASTED.value
+                    Withdrawal.status == WithdrawalStatus.BROADCASTED.value,
+                    Withdrawal.blockchain_tx_hash.is_not(None),
+                    Withdrawal.network == "SEPOLIA"
                 )
+                .with_for_update(skip_locked=True)
+                .limit(20)
             )
 
             withdrawals = result.scalars().all()
@@ -56,6 +60,20 @@ class EthereumWithdrawalConfirmationMonitor:
             logger.info("Latest block: %s", latest_block)
 
             for withdrawal in withdrawals:
+
+                withdrawal_id = withdrawal.id
+
+                tx_hash = withdrawal.blockchain_tx_hash
+
+                try:
+                    await self.process_withdrawal(db, withdrawal)
+                except Exception:
+                    await db.rollback()
+                    logger.exception(
+                        "Failed confirmation processing for %s",
+                        withdrawal_id,
+                        tx_hash,
+                    )    
 
                 receipt = await self.rpc.rpc_call(
                     "eth_getTransactionReceipt",
@@ -74,10 +92,16 @@ class EthereumWithdrawalConfirmationMonitor:
                 if receipt["status"] == "0x0":
 
                     await WithdrawalService.mark_failed(
-                        db,
-                        withdrawal,
-                        "Blockchain transaction reverted",
+                        db=db,
+                        withdrawal=withdrawal,
+                        reason="Blockchain transaction reverted",
                     )
+
+                    if withdrawal.ledger_transaction_id:
+                        await LedgerService.mark_failed(
+                            db=db,
+                            transaction_id=withdrawal.ledger_transaction_id,
+                        )
 
                     logger.error(
                         "Withdrawal %s reverted on-chain.",
@@ -93,15 +117,19 @@ class EthereumWithdrawalConfirmationMonitor:
                 withdrawal.confirmations = confirmations
 
                 logger.info(
-                    "Withdrawal %s confirmations=%s",
+                    "CONFIRMATION | withdrawal=%s | tx=%s | confirmations=%s/%s",
                     withdrawal.id,
+                    withdrawal.blockchain_tx_hash,
                     confirmations,
+                    self.REQUIRED_CONFIRMATIONS,
                 )
 
                 if confirmations >= self.REQUIRED_CONFIRMATIONS:
 
-                    withdrawal.status = WithdrawalStatus.COMPLETED.value
-                    withdrawal.completed_at = datetime.now(timezone.utc)
+                    await WithdrawalService.mark_completed(
+                        db=db,
+                        withdrawal=withdrawal,
+                    )
 
                     await LedgerService.mark_posted(
                         db,
@@ -109,11 +137,83 @@ class EthereumWithdrawalConfirmationMonitor:
                     )
 
                     logger.info(
-                        "Withdrawal %s COMPLETED.",
+                        "COMPLETED | withdrawal=%s | tx=%s",
                         withdrawal.id,
+                        withdrawal.blockchain_tx_hash,
                     )
 
             await db.commit()
+
+    async def process_withdrawal(
+        self,
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+    ):
+
+        receipt = await self.rpc.rpc_call(
+            "eth_getTransactionReceipt",
+            [withdrawal.blockchain_tx_hash],
+        )
+
+        if receipt is None:
+            logger.info(
+                "Waiting for receipt %s",
+                withdrawal.blockchain_tx_hash,
+            )
+            return
+
+        if receipt["status"] == "0x0":
+            await WithdrawalService.mark_failed(
+                db=db,
+                withdrawal=withdrawal,
+                reason="Blockchain transaction reverted",
+            )
+
+            if withdrawal.ledger_transaction_id:
+                await LedgerService.mark_failed(
+                    db=db,
+                    transaction_id=withdrawal.ledger_transaction_id,
+                )
+
+            logger.error(
+                "Withdrawal %s reverted on-chain.",
+                withdrawal.id,
+            )
+            return
+
+        latest_block = await self.rpc.get_latest_block()
+
+        block_number = int(receipt["blockNumber"], 16)
+        confirmations = latest_block - block_number + 1
+
+        withdrawal.confirmations = confirmations
+        await db.flush()
+
+        logger.info(
+            "CONFIRMATION | withdrawal=%s | confirmations=%s/%s",
+            withdrawal.id,
+            confirmations,
+            self.REQUIRED_CONFIRMATIONS,
+        )
+
+        if confirmations < self.REQUIRED_CONFIRMATIONS:
+            return
+
+        await WithdrawalService.mark_completed(
+            db=db,
+            withdrawal=withdrawal,
+        )
+
+        if withdrawal.ledger_transaction_id:
+            await LedgerService.mark_posted(
+                db=db,
+                transaction_id=withdrawal.ledger_transaction_id,
+            )
+
+        logger.info(
+            "COMPLETED | withdrawal=%s",
+            withdrawal.id,
+        )        
 
 async def main():
     monitor = EthereumWithdrawalConfirmationMonitor()

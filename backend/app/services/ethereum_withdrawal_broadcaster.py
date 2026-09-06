@@ -200,8 +200,11 @@ class EthereumWithdrawalBroadcaster:
             stmt = (
                 select(Withdrawal)
                 .where(
-                    Withdrawal.status == WithdrawalStatus.APPROVED.value
+                    Withdrawal.status == WithdrawalStatus.APPROVED.value,
+                    Withdrawal.network == "SEPOLIA",             # only Ethereum broadcaster
+                    Withdrawal.blockchain_tx_hash.is_(None),    # never rebroadcast
                 )
+                .order_by(Withdrawal.created_at.asc())
                 .with_for_update(skip_locked=True)
                 .limit(1)
             )
@@ -250,6 +253,10 @@ class EthereumWithdrawalBroadcaster:
 
             except Exception as exc:
 
+                # Save the primary key before rollback.
+                withdrawal_id = withdrawal.id
+                tx_hash = withdrawal.blockchain_tx_hash
+
                 await db.rollback()
 
                 failed_result = await db.execute(
@@ -269,7 +276,10 @@ class EthereumWithdrawalBroadcaster:
             
                 await db.commit()
 
-                logger.exception("Withdrawal broadcast failed"  )
+                logger.exception(
+                    "Withdrawal %s broadcast failed", 
+                    withdrawal_id,
+                )
 
 
 async def main():

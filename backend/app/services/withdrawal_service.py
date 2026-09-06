@@ -246,7 +246,11 @@ class WithdrawalService:
         tx_hash: str,
     ) -> Withdrawal:
 
-        withdrawal.status = WithdrawalStatus.BROADCASTED.value
+        if withdrawal.status != WithdrawalStatus.BROADCASTED.value:
+            raise ValueError(
+                "Only broadcasting withdrawals can be marked as broadcasted"
+            )
+        withdrawal.status = WithdrawalService.BROADCASTED.value
         withdrawal.blockchain_tx_hash = tx_hash.lower()
         withdrawal.failure_reason = None
         withdrawal.confirmations = 0
@@ -256,6 +260,23 @@ class WithdrawalService:
 
         return withdrawal
 
+    @staticmethod
+    async def mark_completed(
+        db: AsyncSession,
+        withdrawal: Withdrawal,
+    ) -> Withdrawal:
+
+        if withdrawal.status != WithdrawalStatus.BROADCASTED.value:
+            raise ValueError(
+                "Only broadcasted withdrawals can be completed"
+            )
+
+        withdrawal.status = WithdrawalStatus.COMPLETED.value
+        withdrawal.completed_at = datetime.now(timezone.utc)
+
+        await db.flush()
+        return withdrawal
+    
     @staticmethod
     async def mark_failed(
         db: AsyncSession,
@@ -292,18 +313,21 @@ class WithdrawalService:
     @staticmethod
     async def approve_by_admin(
         db: AsyncSession,
+        *,
         withdrawal: Withdrawal,
+        approved_by: UUID,
     ) -> Withdrawal:
         """
-        Approve a pending withdrawal.
+        Finance Officer approves a pending crypto withdrawal.
+        Funds remain locked until blockchain confirmation.
         """
 
         if withdrawal.status != WithdrawalStatus.PENDING.value:
-            raise ValueError(
-                f"Withdrawal is already {withdrawal.status.lower()}"
-            )
+            raise ValueError("Only pending withdrawals can be approved")
 
         withdrawal.status = WithdrawalStatus.APPROVED.value
+        withdrawal.approved_by_admin_id = approved_by
+        withdrawal.approved_at = datetime.now(timezone.utc)
 
         await db.flush()
 
@@ -312,58 +336,35 @@ class WithdrawalService:
     @staticmethod
     async def reject_by_admin(
         db: AsyncSession,
+        *,
         withdrawal: Withdrawal,
+        rejected_by: UUID,
+        reason: str | None = None,
     ) -> Withdrawal:
+        """
+        Reject a pending withdrawal and unlock customer funds.
+        """
 
         if withdrawal.status != WithdrawalStatus.PENDING.value:
-            raise ValueError(
-                f"Withdrawal is already {withdrawal.status.lower()}"
-            )
+            raise ValueError("Only pending withdrawals can be rejected")
 
-        account = await BalanceService.get_locked_account(
+        customer = await BalanceService.get_locked_account(
             db,
             withdrawal.account_id,
         )
 
-        # Return locked funds to available balance.
-        await BalanceService.unlock(account, withdrawal.amount)
-
-        # Cancel the pending ledger transaction.
-        await LedgerService.mark_cancelled(
-            db,
-            withdrawal.ledger_transaction_id,
-        )
-
-        # treasury_result = await db.execute(
-        #     select(Account).where(
-        #         Account.asset_id == withdrawal.asset_id,
-        #         Account.account_type == WithdrawalService.SYSTEM_ACCOUNT_TYPE,
-        #     )
-        # )
-
-        # treasury = treasury_result.scalar_one()
-
-        # await LedgerService.create_transaction(
-        #     db=db,
-        #     user_id=withdrawal.user_id,
-        #     reference=f"WITHDRAWAL_REJECT:{withdrawal.id}",
-        #     transaction_type=LedgerTransactionType.REFUND,
-        #     description="Withdrawal rejected refund",
-        #     entries=[
-        #         {
-        #             "account_id": treasury.id,
-        #             "entry_type": LedgerEntryType.DEBIT,
-        #             "amount": withdrawal.amount,
-        #         },
-        #         {
-        #             "account_id": account.id,
-        #             "entry_type": LedgerEntryType.CREDIT,
-        #             "amount": withdrawal.amount,
-        #         },
-        #     ],
-        # )
+        await BalanceService.unlock(customer, withdrawal.amount)
 
         withdrawal.status = WithdrawalStatus.REJECTED.value
+        withdrawal.rejected_by = rejected_by
+        withdrawal.rejected_at = datetime.now(timezone.utc)
+        withdrawal.rejection_reason = reason
+
+        if withdrawal.ledger_transaction_id:
+            await LedgerService.mark_failed(
+                db,
+                withdrawal.ledger_transaction_id,
+            )
 
         await db.flush()
 
