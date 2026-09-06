@@ -299,3 +299,200 @@ class DepositService:
             "network": wallet.network,
             "address": wallet.address,
         }
+from datetime import datetime, timezone
+from decimal import Decimal
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.account import Account
+from app.models.asset import Asset
+from app.models.deposit import Deposit, DepositStatus
+from app.models.ledger_entry import LedgerEntryType
+from app.models.ledger_transaction import LedgerTransactionType
+from app.services.balance_service import BalanceService
+from app.services.ledger_service import LedgerService
+
+
+class DepositService:
+    """Handles blockchain deposit lifecycle."""
+
+    SYSTEM_ACCOUNT_TYPE = "SYSTEM"
+
+    # ------------------------------------------------------------------
+    # Detect blockchain deposit (Listener)
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def create_detected_deposit(
+        db: AsyncSession,
+        *,
+        account: Account,
+        asset: Asset,
+        tx_hash: str,
+        network: str,
+        amount: Decimal,
+        block_number: int,
+    ) -> Deposit:
+        """
+        Called by EthereumDepositListener when an on-chain deposit is detected.
+
+        Creates:
+        - Deposit (BROADCASTED)
+        - Pending ledger transaction
+        """
+
+        # --------------------------------------------------------------
+        # Idempotency (very important)
+        # --------------------------------------------------------------
+        existing = await db.execute(
+            select(Deposit).where(
+                Deposit.blockchain_tx_hash == tx_hash.lower(),
+                Deposit.network == network,
+            )
+        )
+
+        deposit = existing.scalar_one_or_none()
+
+        if deposit:
+            return deposit
+
+        # --------------------------------------------------------------
+        # Create Deposit
+        # --------------------------------------------------------------
+        deposit = Deposit(
+            user_id=account.user_id,
+            account_id=account.id,
+            asset_id=asset.id,
+            network=network,
+            amount=amount,
+            blockchain_tx_hash=tx_hash.lower(),
+            block_number=block_number,
+            confirmations=0,
+            status=DepositStatus.BROADCASTED.value,
+            broadcasted_at=datetime.now(timezone.utc),
+        )
+
+        db.add(deposit)
+        await db.flush()
+
+        # --------------------------------------------------------------
+        # Create Pending Ledger Transaction
+        # --------------------------------------------------------------
+        treasury_result = await db.execute(
+            select(Account).where(
+                Account.account_type == DepositService.SYSTEM_ACCOUNT_TYPE,
+                Account.asset_id == asset.id,
+            )
+        )
+
+        treasury = treasury_result.scalar_one()
+
+        transaction = await LedgerService.create_transaction(
+            db=db,
+            user_id=account.user_id,
+            reference=f"DEPOSIT:{deposit.id}",
+            transaction_type=LedgerTransactionType.CRYPTO_DEPOSIT,
+            description=f"Blockchain deposit {network}:{tx_hash}",
+            entries=[
+                {
+                    "account_id": treasury.id,
+                    "entry_type": LedgerEntryType.DEBIT,
+                    "amount": amount,
+                },
+                {
+                    "account_id": account.id,
+                    "entry_type": LedgerEntryType.CREDIT,
+                    "amount": amount,
+                },
+            ],
+        )
+
+        deposit.ledger_transaction_id = transaction.id
+
+        await db.flush()
+
+        return deposit
+
+    # ------------------------------------------------------------------
+    # Confirmation Progress
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def mark_confirming(
+        db: AsyncSession,
+        deposit: Deposit,
+        confirmations: int,
+    ) -> Deposit:
+
+        deposit.confirmations = confirmations
+
+        if deposit.status == DepositStatus.BROADCASTED.value:
+            deposit.status = DepositStatus.CONFIRMING.value
+
+        await db.flush()
+
+        return deposit
+
+    # ------------------------------------------------------------------
+    # Deposit Completed
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def mark_completed(
+        db: AsyncSession,
+        deposit: Deposit,
+        confirmations: int,
+    ) -> Deposit:
+
+        if deposit.status == DepositStatus.COMPLETED.value:
+            return deposit
+
+        deposit.status = DepositStatus.COMPLETED.value
+        deposit.confirmations = confirmations
+        deposit.completed_at = datetime.now(timezone.utc)
+
+        # Credit customer available balance.
+        account_result = await db.execute(
+            select(Account)
+            .where(Account.id == deposit.account_id)
+            .with_for_update()
+        )
+
+        account = account_result.scalar_one()
+
+        await BalanceService.credit(
+            account=account,
+            amount=deposit.amount,
+        )
+
+        # Post ledger transaction.
+        await LedgerService.mark_posted(
+            db=db,
+            transaction_id=deposit.ledger_transaction_id,
+        )
+
+        await db.flush()
+
+        return deposit
+
+    # ------------------------------------------------------------------
+    # Deposit Failed / Reverted
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def mark_failed(
+        db: AsyncSession,
+        deposit: Deposit,
+        reason: str,
+    ) -> Deposit:
+
+        deposit.status = DepositStatus.FAILED.value
+        deposit.failure_reason = reason
+
+        await LedgerService.mark_failed(
+            db=db,
+            transaction_id=deposit.ledger_transaction_id,
+            reason=reason,
+        )
+
+        await db.flush()
+
+        return deposit

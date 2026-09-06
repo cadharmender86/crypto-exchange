@@ -56,6 +56,7 @@ from app.models.fiat_deposit import (
 )
 
 from app.models.payment_order import PaymentOrder
+from app.models.blockchain_cursor import BlockchainCursor
 
 __all__ = [
     # Base

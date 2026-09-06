@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Integer, Numeric, String, func
+from sqlalchemy import Boolean, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,10 +35,22 @@ class Asset(Base):
         nullable=False,
     )
 
+    contract_address: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        unique=False,
+    )
+
     decimal_places: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
+        default=18,
     )
+
+    # decimal_places: Mapped[int] = mapped_column(
+    #     Integer,
+    #     nullable=False,
+    # )
 
     is_active: Mapped[bool] = mapped_column(
         Boolean,

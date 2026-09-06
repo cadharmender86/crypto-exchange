@@ -108,8 +108,8 @@ class WalletAddress(Base):
         back_populates="wallet_addresses",
     )
 
-    deposits = relationship(
+    deposits: Mapped[list["Deposit"]] = relationship(
         "Deposit",
         back_populates="wallet_address",
-        lazy="selectin",
+        foreign_keys="Deposit.wallet_address_id",
     )

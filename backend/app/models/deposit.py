@@ -7,6 +7,14 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+from enum import Enum
+
+class DepositStatus(str, Enum):
+    PENDING = "PENDING"
+    BROADCASTED = "BROADCASTED"
+    CONFIRMING = "CONFIRMING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class Deposit(Base):
@@ -64,6 +72,26 @@ class Deposit(Base):
         nullable=True,
     )
 
+    block_number: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    failure_reason: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    broadcasted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     amount: Mapped[Decimal] = mapped_column(
         Numeric(38, 18),
         nullable=False,
@@ -76,9 +104,9 @@ class Deposit(Base):
     )
 
     status: Mapped[str] = mapped_column(
-        String(20),
+        String(30),
         nullable=False,
-        default="PENDING",
+        default=DepositStatus.PENDING.value,
         index=True,
     )
 
@@ -109,6 +137,11 @@ class Deposit(Base):
         "User",
         back_populates="deposits",
     )
+
+    # wallet_address = relationship(
+    #     "WalletAddress",
+    #     back_populates="deposits",
+    # )
 
     wallet_address = relationship(
         "WalletAddress",
