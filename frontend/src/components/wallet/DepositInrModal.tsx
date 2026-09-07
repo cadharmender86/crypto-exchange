@@ -9,6 +9,7 @@ import { createINRDeposit } from "@/services/payment.service";
 import { getDepositAddress } from "@/services/deposit.service";
 // import { createPaymentOrder } from "@/lib/paymentApi";
 
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -17,7 +18,10 @@ interface Props {
     name: string;
     is_fiat: boolean;
   } | null;
+
+  // Existing INR callback (keep it)
   onPaymentSuccess: () => Promise<void>;
+
 }
 
 const createPaymentOrder = async (amount: number) => {
@@ -43,7 +47,7 @@ const createPaymentOrder = async (amount: number) => {
   return data;
 };
 
-export default function DepositInrModal({ open, onClose, asset, onPaymentSuccess }: Props) {
+export default function DepositInrModal({ open, onClose, asset, onPaymentSuccess}: Props) {
   const [amount, setAmount] = useState(500);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

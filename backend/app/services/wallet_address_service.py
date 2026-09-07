@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.asset import Asset
 from app.models.wallet import Wallet
 from app.models.wallet_address import WalletAddress
+from app.services.ethereum_wallet_service import EthereumWalletService
 
 
 class WalletAddressService:
@@ -176,3 +177,60 @@ class WalletAddressService:
             raise ValueError("Wallet address not found")
 
         return wallet_address
+
+    
+    @staticmethod
+    async def get_or_create_address(
+        db: AsyncSession,
+        *,
+        wallet_id: UUID,
+        user_id: UUID,
+        asset_id: UUID,
+        network: str,
+    ) -> WalletAddress:
+
+        network = network.strip().upper()
+
+        # 1. Return existing address if already generated.
+        existing_result = await db.execute(
+            select(WalletAddress).where(
+                WalletAddress.wallet_id == wallet_id,
+                WalletAddress.network == network,
+                WalletAddress.status == "ACTIVE",
+            )
+        )
+
+        existing = existing_result.scalar_one_or_none()
+
+        if existing:
+            return existing
+
+        # 2. Generate first address for this network.
+        if network == "ETHEREUM_SEPOLIA":
+            return await EthereumWalletService.allocate_deposit_address(
+                db=db,
+                wallet_id=wallet_id,
+                user_id=user_id,
+                asset_id=asset_id,
+            )
+
+        raise ValueError(f"Unsupported network: {network}")
+
+
+    @staticmethod
+    async def has_address(
+        db: AsyncSession,
+        *,
+        wallet_id: UUID,
+        network: str,
+    ) -> bool:
+
+        result = await db.execute(
+            select(WalletAddress.id).where(
+                WalletAddress.wallet_id == wallet_id,
+                WalletAddress.network == network.upper(),
+                WalletAddress.status == "ACTIVE",
+            )
+        )
+
+        return result.scalar_one_or_none() is not None

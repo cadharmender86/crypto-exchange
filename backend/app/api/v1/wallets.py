@@ -7,7 +7,8 @@ from fastapi import (
     status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-
+# from sqlalchemy import select
+# from app.models.asset import Asset
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.user import User
@@ -19,6 +20,9 @@ from app.services.wallet_service import WalletService
 from app.schemas.ledger import LedgerTransactionResponse
 from app.services.ledger_service import LedgerService
 from app.schemas.wallet_dashboard import WalletDashboardResponse
+# from app.schemas.wallet_address import WalletAddressGenerateRequest
+# from app.services.wallet_address_service import WalletAddressService
+
 
 
 router = APIRouter(
@@ -131,3 +135,108 @@ async def get_wallet(
         )
 
     return wallet
+
+# @router.post("/receive/generate")
+# async def generate_receive_address(
+#     request: WalletAddressGenerateRequest,
+#     current_user: User = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     try:
+#         wallet = await WalletService.get_user_wallet(
+#             db=db,
+#             user_id=current_user.id,
+#         )
+
+#         if wallet is None:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail="Wallet not found",
+#             )
+
+#         asset_result = await db.execute(
+#             select(Asset).where(
+#                 Asset.symbol == request.asset.upper()
+#             )
+#         )
+
+#         asset = asset_result.scalar_one_or_none()
+
+#         if asset is None:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail="Asset not found",
+#                 )
+
+#         if not asset.is_active:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Asset is not active",
+#             )
+
+#         if not asset.deposit_enabled:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Deposits are disabled for this asset",
+#             )
+
+#         wallet_address = await WalletAddressService.get_or_create_address(
+#             db=db,
+#             wallet_id=wallet.id,
+#             user_id=current_user.id,
+#             asset_id=asset.id,
+#             network=request.network,
+#         )
+
+#         await db.commit()
+
+#         return {
+#             "asset": request.asset,
+#             "network": request.network,
+#             "address": wallet_address.address,
+#             "derivation_index": wallet_address.derivation_index,
+#         }
+
+#     except ValueError as exc:
+#         await db.rollback()
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=str(exc),
+#         )
+
+# @router.get("/receive")
+# async def get_receive_address(
+#     network: str,
+#     current_user: User = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     wallet = await WalletService.get_user_wallet(
+#         db=db,
+#         user_id=current_user.id,
+#     )
+
+#     if wallet is None:
+#         raise HTTPException(
+#             status_code=404,
+#             detail="Wallet not found",
+#         )
+
+#     addresses = await WalletAddressService.list_addresses(
+#         db=db,
+#         wallet_id=wallet.id,
+#         user_id=current_user.id,
+#     )
+
+#     for address in addresses:
+#         if address.network == network.upper():
+#             return {
+#                 "generated": True,
+#                 "address": address.address,
+#                 "network": address.network,
+#                 "derivation_index": address.derivation_index,
+#             }
+
+#     return {
+#         "generated": False,
+#         "network": network.upper(),
+#     }    

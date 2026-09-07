@@ -61,15 +61,18 @@ export function getWalletDashboard() {
 }
 
 export interface DashboardWalletBalance {
-  account_id: string;
+  account_id: string | null;
   asset_id: string;
+
   symbol: string;
   name: string;
+  
   account_type: string;
 
-  available_balance: string;
-  locked_balance: string;
+  available_balance: number;
+  locked_balance: number;
 
+  account_exists: boolean;
   is_fiat: boolean;
 }
 
@@ -98,4 +101,46 @@ export function getWalletTransactions() {
   }
 
   return apiClient<WalletTransaction[]>("/wallets/transactions");
+}
+
+// =========================================
+// Receive Wallet Address
+// =========================================
+
+export interface ReceiveAddressResponse {
+  generated: boolean;
+  network: string;
+  address?: string;
+  derivation_index?: number;
+}
+
+export interface GenerateReceiveAddressRequest {
+  asset: string;
+  network: string;
+}
+
+export interface GenerateReceiveAddressResponse {
+  asset: string;
+  network: string;
+  address: string;
+  derivation_index: number;
+  newly_generated: boolean;
+}
+
+export function getReceiveAddress(network: string) {
+  return apiClient<ReceiveAddressResponse>(
+    `/wallets/receive?network=${network}`
+  );
+}
+
+export function generateReceiveAddress(
+  payload: GenerateReceiveAddressRequest
+) {
+  return apiClient<GenerateReceiveAddressResponse>(
+    "/wallets/receive/generate",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
 }

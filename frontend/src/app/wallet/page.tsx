@@ -11,11 +11,16 @@ import {
 
 import {
   DashboardWalletBalance,
+  WalletBalance,
   getWalletDashboard,
   getWalletTransactions,
-  WalletBalance,
+  getReceiveAddress,
+  generateReceiveAddress,
+  ReceiveAddressResponse,
+  GenerateReceiveAddressRequest,
 } from "@/services/wallet.service";
 
+import { useRouter } from "next/navigation";
 import DepositModal from "@/components/wallet/DepositModal";
 import DepositInrModal from "@/components/wallet/DepositInrModal";
 import WithdrawModal from "@/components/wallet/WithdrawModal";
@@ -39,6 +44,10 @@ export default function WalletPage() {
   const [depositAsset, setDepositAsset] = useState<DashboardWalletBalance | null>(null);
   const [withdrawAsset, setWithdrawAsset] = useState<DashboardWalletBalance | null>(null);
   const [showInrDeposit, setShowInrDeposit] = useState(false);
+  const [receiveAddress, setReceiveAddress] = useState<ReceiveAddressResponse  | null>(null);
+  const [receiveLoading, setReceiveLoading] = useState(false);
+  const [receiveGenerating, setReceiveGenerating] = useState(false);  
+  const router = useRouter();
 
   async function loadWallet() {
     setLoading(true);
@@ -53,6 +62,41 @@ export default function WalletPage() {
       setLoading(false);
     }
   }
+
+  async function loadReceiveWallet(assetSymbol: string) {
+  try {
+    setReceiveLoading(true);
+
+    // Check if address already exists.
+    const existing = await getReceiveAddress("ETHEREUM_SEPOLIA");
+
+    if (existing.generated) {
+      setReceiveAddress(existing);
+      return;
+    }
+
+    // Generate only once.
+    setReceiveGenerating(true);
+
+    const generated = await generateReceiveAddress({
+      asset: assetSymbol,
+      network: "ETHEREUM_SEPOLIA",
+    });
+
+    setReceiveAddress({
+      generated: true,
+      network: generated.network,
+      address: generated.address,
+      derivation_index: generated.derivation_index,
+    });
+
+  } catch (error) {
+    console.error("Failed to load receive address", error);
+  } finally {
+    setReceiveGenerating(false);
+    setReceiveLoading(false);
+  }
+}
 
   useEffect(() => {
     loadWallet();
@@ -150,7 +194,7 @@ export default function WalletPage() {
         <section className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredBalances.map((asset) => (
             <div
-              key={asset.account_id}
+              key={asset.asset_id}
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5"
             >
               <div className="flex justify-between items-center">
@@ -194,19 +238,38 @@ export default function WalletPage() {
                 </div>
               </div>
 
-              <div className="mt-6 flex gap-3">
+              {/* KYC message (only for INR before KYC approval) */}
+              {asset.is_fiat && !asset.account_exists && (
+                <p className="mt-3 text-xs text-yellow-400">
+                  Complete KYC to activate your INR wallet.
+                </p>
+              )}
 
+              <div className="mt-4 flex gap-3">
+                {/* Deposit Button */}
                 <button 
                   onClick={() => {
                     if (asset.is_fiat) {
-                      setShowInrDeposit(true);
+                      if(asset.account_exists) {
+                        setShowInrDeposit(true);
+                      }
                     } else {
                       setDepositAsset(asset);
+                      loadReceiveWallet(asset.symbol);
                     }
-                    }}
-                  className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-500"
-                >  
-                  Deposit
+                  }}
+                  disabled={asset.is_fiat && !asset.account_exists}
+                  className={`w-full rounded-lg py-2 font-medium text-white ${
+                    asset.is_fiat && !asset.account_exists
+                      ? "bg-zinc-700 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-500"
+                  }`}
+                >
+                  {asset.is_fiat
+                    ? asset.account_exists
+                      ? "Deposit INR"
+                      : "Complete KYC"
+                    : "Deposit"}
                 </button>
 
                 <button 
@@ -296,7 +359,25 @@ export default function WalletPage() {
         <DepositModal
           open={depositAsset !== null}
           asset={depositAsset}
-          onClose={() => setDepositAsset(null)}
+          receiveAddress={receiveAddress}
+          loading={receiveLoading}
+          generating={receiveGenerating}
+          onGenerate={() => {
+            if (depositAsset) {
+              loadReceiveWallet(depositAsset.symbol);
+            }
+          }}
+          onClose={() => {
+            setDepositAsset(null);
+            setReceiveAddress(null);
+          }}
+        />
+
+        <DepositInrModal
+          open={showInrDeposit}
+          asset={balances.find((a) => a.symbol === "INR") ?? null}
+          onClose={() => setShowInrDeposit(false)}
+          onPaymentSuccess={loadWallet}
         />
 
         <WithdrawModal
