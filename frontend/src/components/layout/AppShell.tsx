@@ -2,29 +2,31 @@
 
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
-import MobileBottomNav from "./MobileBottomNav";
 
-const publicPaths = new Set(["/", "/login"]);
-
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
-  const isPublic = publicPaths.has(pathname);
 
-  if (isPublic) {
+  // Auth pages should NOT use sidebar layout
+  const isAuthPage =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname.startsWith("/auth");
+
+  if (isAuthPage) {
     return <>{children}</>;
   }
 
   return (
-    <div className="min-h-screen bg-[#080d12] text-white">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] lg:block">
-        <Sidebar />
-      </aside>
+    <div className="flex min-h-screen bg-black text-white">
+      <Sidebar />
 
-      <main className="min-w-0 lg:ml-[240px] pb-16 lg:pb-0">
+      <main className="flex-1 overflow-y-auto p-8">
         {children}
       </main>
-
-      <MobileBottomNav />
     </div>
   );
 }

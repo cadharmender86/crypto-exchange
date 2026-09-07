@@ -1,3 +1,5 @@
+import { getAccessToken } from "@/lib/auth";
+
 const configuredBaseUrl =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -11,16 +13,16 @@ export async function apiClient<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers);
 
+  // Default Content-Type
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("bitnova_access_token");
+  // Automatically attach JWT token
+  const token = getAccessToken();
 
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -34,11 +36,12 @@ export async function apiClient<T>(
 
     try {
       const data = await response.json();
+
       if (typeof data?.detail === "string") {
         message = data.detail;
       }
     } catch {
-      // Keep the HTTP status message when the response is not JSON.
+      // Keep HTTP status if response isn't JSON.
     }
 
     throw new Error(message);

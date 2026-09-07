@@ -78,6 +78,12 @@ class User(
         order_by="FiatTransaction.created_at.desc()",
     )
 
+    email_otps: Mapped[list["EmailOTP"]] = relationship(
+        "EmailOTP",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     wallet_addresses: Mapped[list["WalletAddress"]] = relationship(
         "WalletAddress",
         back_populates="user",

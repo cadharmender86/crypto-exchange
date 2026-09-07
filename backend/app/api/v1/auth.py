@@ -3,7 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import (APIRouter, Depends, HTTPException, Request, status)
-from fastapi.security import OAuth2PasswordRequestForm
+from app.schemas.auth import LoginRequest
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -13,12 +13,20 @@ from app.core.rate_limiter import login_rate_limiter
 from app.api.dependencies import get_current_user, get_db
 from app.core.config import settings
 from app.services.account_service import AccountService
+from app.services.email_otp_service import EmailOTPService
+from app.core.security import hash_password
 from app.models.user import User
 from app.schemas.auth import (
     RefreshTokenRequest,
     RegisterRequest,
+    RegisterResponse,
     TokenResponse,
     ChangePasswordRequest,
+)
+from app.schemas.email_otp import (
+    VerifyEmailRequest,
+    VerifyEmailResponse,
+    ResendEmailOtpRequest,
 )
 
 
@@ -150,6 +158,7 @@ def decode_token(token: str) -> dict[str, Any]:
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
+    response_model=RegisterResponse,
 )
 async def register(
     request: RegisterRequest,
@@ -159,11 +168,8 @@ async def register(
 
     # Check existing user
     result = await db.execute(
-        select(User).where(
-            User.email == email
-        )
+        select(User).where(User.email == email)
     )
-
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
@@ -175,9 +181,7 @@ async def register(
     # Create user
     user = User(
         email=email,
-        password_hash=hash_password(
-            request.password
-        ),
+        password_hash=hash_password(request.password),
         is_active=True,
         is_verified=False,
     )
@@ -185,8 +189,11 @@ async def register(
     db.add(user)
     await db.flush()
 
+    # Create default wallets/accounts
     await AccountService.create_customer_accounts(
-        db, user.id)
+        db=db,
+        user_id=user.id,
+    )
 
     try:
         await db.commit()
@@ -194,20 +201,24 @@ async def register(
 
     except IntegrityError:
         await db.rollback()
-
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
         )
 
-    return {
-        "message": "Registration successful",
-        "user_id": str(user.id),
-        "email": user.email,
-        "is_active": user.is_active,
-        "is_verified": user.is_verified,
-    }
+    # Generate email verification OTP
+    await EmailOTPService.generate_register_otp(
+        db=db,
+        user=user,
+    )
 
+    return RegisterResponse(
+        user_id=user.id,
+        email=user.email,
+        email_verified=user.is_verified,
+        kyc_status="NOT_STARTED",
+        message="Registration successful. Please verify your email with the OTP sent.",
+    )
 
 # ---------------------------------------------------------------------------
 # LOGIN
@@ -218,103 +229,70 @@ async def register(
     response_model=TokenResponse,
 )
 async def login(
+    payload: LoginRequest,
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
-    email = form_data.username.strip().lower()
+    # Normalize email
+    email = payload.email.strip().lower()
 
-        # --------------------------------------------------------
+    # --------------------------------------------------------
     # Login brute-force protection
     # --------------------------------------------------------
+    client_ip = request.client.host if request.client else "unknown"
 
-    client_ip = (
-        request.client.host
-        if request.client
-        else "unknown"
-    )
+    rate_limit_key = f"login:{client_ip}:{email}"
 
-    # Combine IP + email so an attacker cannot simply
-    # rotate usernames from the same address.
-    rate_limit_key = (
-        f"login:{client_ip}:{email}"
-    )
-
-    allowed, retry_after = (
-        login_rate_limiter.check(
-            rate_limit_key
-        )
-    )
+    allowed, retry_after = login_rate_limiter.check(rate_limit_key)
 
     if not allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                "Too many login attempts. "
-                "Please try again later."
-            ),
-            headers={
-                "Retry-After": str(
-                    retry_after
-                ),
-            },
+            detail="Too many login attempts. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
         )
-    
-    result = await db.execute(
-        select(User).where(
-            User.email == email
-        )
-    )
 
+    # Find user
+    result = await db.execute(
+        select(User).where(User.email == email)
+    )
     user = result.scalar_one_or_none()
 
-    # Do not reveal whether the email exists.
+    # Don't reveal if email exists
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
-            headers={
-                "WWW-Authenticate": "Bearer",
-            },
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Inactive account check
+    # Account active?
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your account is inactive",
         )
 
-    # Password verification
-    if not verify_password(
-        form_data.password,
-        user.password_hash,
-    ):
+    # Verify password
+    if not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
-            headers={
-                "WWW-Authenticate": "Bearer",
-            },
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(
-        user.id
-    )
+    # Generate JWTs
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
 
-    refresh_token = create_refresh_token(
-        user.id
-    )
-
-    # Update last login if your model contains this column.
+    # Update last login
     if hasattr(user, "last_login_at"):
         user.last_login_at = datetime.now(timezone.utc)
 
     await db.commit()
 
-    login_rate_limiter.clear(
-        rate_limit_key
-    )
+    # Reset rate limiter after successful login
+    login_rate_limiter.clear(rate_limit_key)
 
     return TokenResponse(
         access_token=access_token,
@@ -322,7 +300,6 @@ async def login(
         token_type="bearer",
         expires_in=settings.access_token_expire_minutes * 60,
     )
-
 
 # ---------------------------------------------------------------------------
 # REFRESH TOKEN
@@ -396,3 +373,39 @@ async def refresh_token(
         token_type="bearer",
         expires_in=settings.access_token_expire_minutes * 60,
     )
+
+@router.post("/resend-email-otp")
+async def resend_email_otp(
+    payload: ResendEmailOtpRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    await EmailOTPService.resend_register_otp(
+        db=db,
+        email=payload.email,
+    )
+    return {"message": "OTP sent successfully."}
+
+@router.post(
+    "/verify-email",
+    response_model=VerifyEmailResponse,
+)
+async def verify_email(
+    payload: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await EmailOTPService.verify_register_otp(
+            db=db,
+            email=payload.email,
+            otp=payload.otp,
+        )
+
+        return VerifyEmailResponse(
+            message="Email verified successfully."
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )

@@ -7,9 +7,21 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128,)
 
+class RegisterResponse(BaseModel):
+    user_id: UUID
+    email: EmailStr
+    email_verified: bool
+    kyc_status: str
+    message: str    
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
+from pydantic import BaseModel, EmailStr
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str    
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=8, max_length=128)

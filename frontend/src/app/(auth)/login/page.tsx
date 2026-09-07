@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { ApiError, login, saveTokens } from "@/lib/api";
+import { SubmitEvent, useState } from "react";
+import { saveTokens } from "@/lib/auth";
+import { loginUser } from "@/services/auth.service";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,21 +13,30 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const handleSubmit = async (e: SubmitEvent) => {
+    e.preventDefault();
+
     setError("");
     setLoading(true);
 
     try {
-      const tokens = await login(email, password);
-      saveTokens(tokens);
+      const response = await loginUser({
+        email,
+        password,
+      });
+
+      saveTokens(
+        response.access_token,
+        response.refresh_token
+      );
+
       router.push("/dashboard");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to connect to BitNova API.");
+    } catch (err: any) {
+      setError(err.message || "Invalid email or password.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#070b14] px-4 py-12 text-white">
