@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from uuid import UUID
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -48,6 +49,10 @@ class PersonalInfoResponse(BaseModel):
     address_line2: str | None = None
 
     postal_code: str | None = None
+
+    submitted_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    verified_at: Optional[datetime] = None
 
 
 # ============================================================

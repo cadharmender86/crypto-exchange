@@ -10,7 +10,7 @@ from app.schemas.kyc import (
     PersonalInfoRequest,
     PersonalInfoResponse,
 )
-from app.models.enums import DocumentType, KYCStatus
+from app.models.enums import DocumentType, KYCStatus, DocumentStatus
 from app.services.kyc_service import KYCService, KYCDocumentService
 from app.schemas.kyc_document import KYCUploadResponse
 from app.models.kyc_document import KYCDocument
@@ -200,7 +200,10 @@ async def submit_kyc(
         )
     )
 
-    uploaded = set(docs_result.scalars().all())
+    documents = {
+        doc.document_type: doc
+        for doc in docs_result.scalars().all()
+    }
 
     required_documents = {
         DocumentType.PAN,
@@ -209,14 +212,24 @@ async def submit_kyc(
         DocumentType.SELFIE,
     }
 
-    missing = required_documents - uploaded
+    missing = []
+    rejected = []
 
-    if missing:
+    for doc_type in required_documents:
+        doc = documents.get(doc_type)
+
+        if doc is None:
+            missing.append(doc_type.value)
+        elif doc.status == DocumentStatus.REJECTED:
+            rejected.append(doc_type.value)    
+
+    if missing or rejected:
         raise HTTPException(
             status_code=400,
             detail={
-                "message": "Missing required KYC documents.",
-                "missing_documents": [doc.value for doc in missing],
+                "message": "Complete all required KYC documents before submitting.",
+                "missing_documents": missing,
+                "rejected_documents": rejected,
             },
         )
 

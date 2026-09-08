@@ -137,3 +137,45 @@ class AdminKYCService:
         await db.refresh(profile)
 
         return profile
+
+    @staticmethod
+    async def reject_kyc(
+        db,
+        user_id,
+        admin_user,
+        reason: str,
+    ):
+        result = await db.execute(
+            select(KYCProfile).where(
+                KYCProfile.user_id == user_id
+            )
+        )
+
+        profile = result.scalar_one_or_none()
+
+        if profile is None:
+            return None
+
+        if profile.kyc_status == KYCStatus.REJECTED:
+            raise ValueError("KYC already rejected.")
+
+        profile.kyc_status = KYCStatus.REJECTED
+        profile.rejection_reason = reason
+        profile.verified_at = datetime.now(timezone.utc)
+        profile.verified_by = admin_user.id
+
+        docs_result = await db.execute(
+            select(KYCDocument).where(
+                KYCDocument.user_id == user_id
+            )
+        )
+
+        for document in docs_result.scalars():
+            document.status = DocumentStatus.REJECTED
+            document.rejection_reason = reason
+            document.verified_at = datetime.now(timezone.utc)
+
+        await db.commit()
+        await db.refresh(profile)
+
+        return profile
