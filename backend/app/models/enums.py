@@ -4,8 +4,9 @@ from enum import Enum
 class KYCStatus(str, Enum):
     NOT_STARTED = "NOT_STARTED"
     DRAFT = "DRAFT"
-    PENDING = "PENDING"
-    VERIFIED = "VERIFIED"
+    SUBMITTED = "SUBMITTED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
 

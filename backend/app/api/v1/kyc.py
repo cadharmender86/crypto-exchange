@@ -171,11 +171,27 @@ async def submit_kyc(
         profile.postal_code,
     ]
 
-    if any(field is None for field in required_fields):
+    if any(field is None or field == "" for field in required_fields):
         raise HTTPException(
             status_code=400,
             detail="Complete personal information before submitting KYC.",
         )
+
+    if profile.kyc_status in (
+        KYCStatus.SUBMITTED,
+        KYCStatus.UNDER_REVIEW,
+        KYCStatus.APPROVED,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="KYC has already been submitted.",
+        )
+
+    # Allow REJECTED users to resubmit after corrections.
+    if profile.kyc_status == KYCStatus.REJECTED:
+        profile.rejection_reason = None
+        profile.verified_at = None
+        profile.verified_by = None
 
     # Validate uploaded documents
     docs_result = await db.execute(
@@ -205,11 +221,11 @@ async def submit_kyc(
         )
 
     # Update profile status
-    profile.kyc_status = KYCStatus.PENDING
+    profile.kyc_status = KYCStatus.SUBMITTED
     profile.submitted_at = datetime.now(timezone.utc)
 
-    if profile.kyc_status == KYCStatus.NOT_STARTED:
-        profile.kyc_status = KYCStatus.DRAFT
+    # if profile.kyc_status == KYCStatus.NOT_STARTED:
+    #     profile.kyc_status = KYCStatus.DRAFT
 
     await db.commit()
     await db.refresh(profile)

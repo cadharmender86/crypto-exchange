@@ -11,6 +11,7 @@ const menuItems = [
   { name: "Invest", icon: "♧", href: "/invest" },
   { name: "Earn", icon: "✧", href: "/earn" },
   { name: "Wallet", icon: "▤", href: "/wallet" },
+  { name: "KYC Verification", icon: "🛡", href: "/kyc" },
   { name: "Orders", icon: "▱", href: "/orders" },
   { name: "History", icon: "◷", href: "/history" },
   { name: "Refer & Earn", icon: "♧", href: "/refer" },

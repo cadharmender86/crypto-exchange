@@ -13,6 +13,7 @@ export default function AppShell({
 
   // Auth pages should NOT use sidebar layout
   const isAuthPage =
+    pathname === "/" ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/verify-email" ||
