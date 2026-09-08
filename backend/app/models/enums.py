@@ -21,5 +21,5 @@ class DocumentType(str, Enum):
 
 class DocumentStatus(str, Enum):
     PENDING = "PENDING"
-    VERIFIED = "VERIFIED"
+    APPROVED = "APPROVED"
     REJECTED = "REJECTED"
