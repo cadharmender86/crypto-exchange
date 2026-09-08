@@ -2,13 +2,14 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from app.models.base import (
     Base,
     TimestampMixin,
     UUIDPrimaryKeyMixin,
 )
+from typing import TYPE_CHECKING
 
 
 class User(
@@ -68,6 +69,17 @@ class User(
         "FiatAccount",
         back_populates="user",
         cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    if TYPE_CHECKING:
+        from app.models.kyc_profile import KYCProfile
+
+    kyc_profile: Mapped["KYCProfile | None"] = relationship(
+        "KYCProfile",
+        back_populates="user",
+        foreign_keys="KYCProfile.user_id",
+        uselist=False,
         lazy="selectin",
     )
 

@@ -24,7 +24,7 @@ def create_access_token(user_id: UUID) -> str:
 
     payload: dict[str, Any] = {
         "sub": str(user_id),
-        "type": "access",
+        "type": "refresh",
         "exp": expires,
     }
 

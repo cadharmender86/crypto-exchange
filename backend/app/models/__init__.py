@@ -58,6 +58,8 @@ from app.models.fiat_deposit import (
 from app.models.payment_order import PaymentOrder
 from app.models.blockchain_cursor import BlockchainCursor
 from app.models.email_otp import EmailOTP
+from app.models.kyc_profile import KYCProfile
+from app.models.kyc_document import KYCDocument
 
 __all__ = [
     # Base
