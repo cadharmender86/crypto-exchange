@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SubmitEvent, useState } from "react";
 import { saveTokens } from "@/lib/auth";
 import { loginUser } from "@/services/auth.service";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const verified = searchParams.get("verified");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,6 +54,12 @@ export default function LoginPage() {
         </form>
         <p className="mt-6 text-center text-sm text-gray-400">Don&apos;t have an account?{" "}<Link href="/register" className="text-blue-400 hover:text-blue-300">Create one</Link></p>
       </div>
+
+      {verified === "true" && (
+        <div className="mb-5 rounded-lg border border-emerald-700 bg-emerald-900/20 p-3 text-sm text-emerald-400">
+          ✓ Email verified successfully. Please sign in.
+        </div>
+      )}
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
+// import Header from "./Header";
 
 export default function AppShell({
   children,
@@ -14,11 +15,15 @@ export default function AppShell({
   const isAuthPage =
     pathname === "/login" ||
     pathname === "/register" ||
+    pathname === "/verify-email" ||
     pathname.startsWith("/auth");
 
   if (isAuthPage) {
     return <>{children}</>;
   }
+
+  console.log("Current pathname:", pathname);
+  console.log("Is Auth Page:", isAuthPage);
 
   return (
     <div className="flex min-h-screen bg-black text-white">

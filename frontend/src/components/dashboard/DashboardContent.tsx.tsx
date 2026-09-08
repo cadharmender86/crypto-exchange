@@ -9,7 +9,7 @@ import INRBalanceCard from "./INRBalanceCard";
 import QuickOrders from "./QuickOrders";
 import CoinBalanceTable from "./CoinBalanceTable";
 import TradeHistory from "./TradeHistory";
-import DashboardHeader from "./DashboardHeader";
+// import DashboardHeader from "./DashboardHeader";
 
 function FuturesBanner() {
   return (
@@ -26,12 +26,11 @@ function FuturesBanner() {
   );
 }
 
-export default function DashboardLayout() {
+export default function DashboardContent() {
   const [showBalance, setShowBalance] = useState(true);
 
   return (
-    <section className="min-h-screen w-full overflow-x-hidden bg-[#080d12] text-white">
-      <DashboardHeader />
+    <section className="w-full overflow-x-hidden text-white">
 
       <div className="mx-auto w-full max-w-[1162px] px-4 py-4 md:px-5 lg:px-[18px] lg:py-4">
         <AdvertisementBanner />

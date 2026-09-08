@@ -69,7 +69,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-        await registerUser({
+      const response = await registerUser({
         first_name: form.first_name,
         last_name: form.last_name,
         email: form.email,
@@ -79,7 +79,7 @@ export default function RegisterPage() {
         });
 
         router.push(
-            `/verify-email?email=${encodeURIComponent(form.email)}`,
+            `/verify-email?email=${encodeURIComponent(response.email)}`,
         );
     } catch (err: any) {
         setError(err.message || "Registration failed.");

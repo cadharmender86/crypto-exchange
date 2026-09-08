@@ -273,6 +273,12 @@ async def login(
             detail="Your account is inactive",
         )
 
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before signing in.",
+        )
+
     # Verify password
     if not verify_password(payload.password, user.password_hash):
         raise HTTPException(
