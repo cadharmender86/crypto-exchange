@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Text
 
 from app.models.base import Base, TimestampMixin
 from app.models.enums import DocumentStatus, DocumentType
@@ -31,6 +32,11 @@ class KYCDocument(TimestampMixin, Base):
         Enum(DocumentStatus, name="document_status"),
         default=DocumentStatus.PENDING,
         nullable=False,
+    )
+
+    rejection_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )
 
     file_name: Mapped[str] = mapped_column(String(255))

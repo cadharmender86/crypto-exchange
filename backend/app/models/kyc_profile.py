@@ -66,7 +66,7 @@ class KYCProfile(TimestampMixin, Base):
         back_populates="kyc_profile",
     )
 
-    documents = relationship(
+    documents: Mapped[list["KYCDocument"]] = relationship(
         "KYCDocument",
         back_populates="profile",
         cascade="all, delete-orphan",
