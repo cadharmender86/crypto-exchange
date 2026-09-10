@@ -1,7 +1,6 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
 
 
 class Settings(BaseSettings):
@@ -17,11 +16,6 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://bitnova:bitnova_password"
         "@localhost:5432/bitnova"
     )
-
-    # frontend_url: str = Field(
-    #         default="http://localhost:3000",
-    #         alias="FRONTEND_URL",
-    # )
 
     redis_url: str = "redis://localhost:6379/0"
 
@@ -40,10 +34,27 @@ class Settings(BaseSettings):
     # and provide it through backend/.env.
     internal_test_deposit_key: str
 
-    # Market-data configuration.
-    # Binance supplies crypto/USDT prices; the backend converts them to INR.
-    # Keep this configurable so the test environment can use a controlled
-    # INR conversion without exposing pricing configuration to the browser.
+    # Market data provider configuration.
+    # Provider endpoints are infrastructure settings and belong in the
+    # environment. Business market membership and FX rates are migrated
+    # separately into database configuration.
+    binance_market_symbols: str = "btcusdt,ethusdt,solusdt"
+    binance_market_intervals: str = "1m,5m,15m,1h,4h,1d"
+    binance_ws_url: str = "wss://stream.binance.com:9443/stream"
+    binance_kline_ws_url: str = "wss://stream.binance.com:9443/ws"
+    binance_rest_url: str = "https://api.binance.com/api/v3/klines"
+
+    @property
+    def binance_market_intervals_set(self) -> set[str]:
+        return {
+            interval.strip().lower()
+            for interval in self.binance_market_intervals.split(",")
+            if interval.strip()
+        }
+
+    # Temporary controlled conversion used by the current market service.
+    # This remains a transitional setting until the exchange-rate table is
+    # implemented and the market service reads the active DB rate.
     market_usdt_inr_rate: float = 88.0
 
     # Ethereum deposit monitoring. RPC URLs and token contracts are supplied
@@ -88,20 +99,13 @@ class Settings(BaseSettings):
     # Cashfree Payment Gateway
     # -----------------------------------------
 
-    cashfree_environment: str = "sandbox"  # or "production"
-
+    cashfree_environment: str = "sandbox"
     cashfree_app_id: str = ""
-
     cashfree_secret_key: str = ""
-
     frontend_url: str = "http://localhost:3000"
-
     cashfree_api_base: str = "https://sandbox.cashfree.com/pg"
-
     cashfree_webhook_secret: str = ""
-
     cashfree_verify_webhook_signature: bool = True
-
     payment_order_expiry_minutes: int = 20
 
     model_config = SettingsConfigDict(
