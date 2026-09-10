@@ -12,18 +12,22 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-BINANCE_WS_URL = "wss://stream.binance.com:9443/stream"
-BINANCE_KLINE_WS_URL = "wss://stream.binance.com:9443/ws"
-BINANCE_REST_URL = "https://api.binance.com/api/v3/klines"
-DEFAULT_SYMBOLS = ("btcusdt", "ethusdt", "solusdt")
-VALID_INTERVALS = {"1m", "5m", "15m", "1h", "4h", "1d"}
-
 
 class BinanceMarketService:
-    """Development/test market feed backed by Binance spot streams."""
+    """Market feed backed by configurable Binance spot endpoints.
 
-    def __init__(self, symbols: tuple[str, ...] = DEFAULT_SYMBOLS) -> None:
-        self.symbols = tuple(symbol.lower() for symbol in symbols if symbol)
+    Provider/infrastructure URLs are environment configuration, while the
+    supported market symbols and business rules will be moved to database
+    configuration as the market-configuration migration is completed.
+    """
+
+    def __init__(self, symbols: tuple[str, ...] | None = None) -> None:
+        configured_symbols = symbols or tuple(
+            symbol.strip().lower()
+            for symbol in settings.binance_market_symbols.split(",")
+            if symbol.strip()
+        )
+        self.symbols = configured_symbols
         self._latest: dict[str, dict[str, Any]] = {}
         self._subscribers: set[asyncio.Queue[dict[str, Any]]] = set()
         self._task: asyncio.Task[None] | None = None
@@ -89,12 +93,20 @@ class BinanceMarketService:
         }
 
         async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(BINANCE_REST_URL, params=params)
+            response = await client.get(settings.binance_rest_url, params=params)
             response.raise_for_status()
             rows = response.json()
 
         rate = settings.market_usdt_inr_rate
-        return [self._candle_from_binance_row(normalized_symbol, normalized_interval, row, rate) for row in rows]
+        return [
+            self._candle_from_binance_row(
+                normalized_symbol,
+                normalized_interval,
+                row,
+                rate,
+            )
+            for row in rows
+        ]
 
     async def subscribe_candles(
         self,
@@ -129,23 +141,27 @@ class BinanceMarketService:
                 if task and not task.done():
                     task.cancel()
 
-    @staticmethod
-    def normalize_symbol(symbol: str) -> str:
+    def normalize_symbol(self, symbol: str) -> str:
         normalized = symbol.strip().upper()
-        if normalized not in {symbol.upper() for symbol in DEFAULT_SYMBOLS}:
+        allowed = {item.upper() for item in self.symbols}
+        if normalized not in allowed:
             raise ValueError("Unsupported market symbol")
         return normalized
 
     @staticmethod
     def normalize_interval(interval: str) -> str:
         normalized = interval.strip().lower()
-        if normalized not in VALID_INTERVALS:
+        if normalized not in settings.binance_market_intervals_set:
             raise ValueError("Unsupported candle interval")
         return normalized
 
     async def _run(self) -> None:
         streams = "/".join(f"{symbol}@ticker" for symbol in self.symbols)
-        url = f"{BINANCE_WS_URL}?streams={streams}"
+        if not streams:
+            logger.warning("No Binance market symbols are configured")
+            return
+
+        url = f"{settings.binance_ws_url}?streams={streams}"
 
         while not self._stop.is_set():
             try:
@@ -172,7 +188,7 @@ class BinanceMarketService:
                 await asyncio.sleep(3)
 
     async def _run_candle_feed(self, symbol: str, interval: str) -> None:
-        stream_url = f"{BINANCE_KLINE_WS_URL}/{symbol.lower()}@kline_{interval}"
+        stream_url = f"{settings.binance_kline_ws_url}/{symbol.lower()}@kline_{interval}"
         key = (symbol, interval)
 
         while not self._stop.is_set() and self._candle_subscribers.get(key):
@@ -189,11 +205,20 @@ class BinanceMarketService:
                             break
                         await self._handle_candle_message(symbol, interval, raw_message)
             except (ConnectionClosed, OSError, asyncio.TimeoutError) as exc:
-                logger.warning("Binance candle feed disconnected %s %s: %s", symbol, interval, exc)
+                logger.warning(
+                    "Binance candle feed disconnected %s %s: %s",
+                    symbol,
+                    interval,
+                    exc,
+                )
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logger.exception("Unexpected Binance candle feed error for %s %s", symbol, interval)
+                logger.exception(
+                    "Unexpected Binance candle feed error for %s %s",
+                    symbol,
+                    interval,
+                )
 
             if not self._stop.is_set() and self._candle_subscribers.get(key):
                 await asyncio.sleep(2)
@@ -284,7 +309,12 @@ class BinanceMarketService:
                 except asyncio.QueueFull:
                     pass
 
-    async def _handle_candle_message(self, symbol: str, interval: str, raw_message: str | bytes) -> None:
+    async def _handle_candle_message(
+        self,
+        symbol: str,
+        interval: str,
+        raw_message: str | bytes,
+    ) -> None:
         message = json.loads(raw_message)
         data = message.get("k", {})
         if not data:
@@ -321,7 +351,12 @@ class BinanceMarketService:
                 pass
 
     @staticmethod
-    def _candle_from_binance_row(symbol: str, interval: str, row: list[Any], rate: float) -> dict[str, Any]:
+    def _candle_from_binance_row(
+        symbol: str,
+        interval: str,
+        row: list[Any],
+        rate: float,
+    ) -> dict[str, Any]:
         return {
             "symbol": symbol,
             "interval": interval,
