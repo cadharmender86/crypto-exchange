@@ -46,7 +46,7 @@ class TradingPair(Base):
     pair_code: Mapped[str] = mapped_column(
         String(20), unique=True,
     )
-    
+
     display_name: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
@@ -74,17 +74,17 @@ class TradingPair(Base):
         nullable=False,
     )
 
-    minimum_order_quantity: Mapped[Decimal] = mapped_column(
+    min_order_quantity: Mapped[Decimal] = mapped_column(
         Numeric(24, 12),
         nullable=False,
     )
 
-    maximum_order_quantity: Mapped[Decimal] = mapped_column(
+    max_order_quantity: Mapped[Decimal | None] = mapped_column(
         Numeric(24, 12),
-        nullable=False,
+        nullable=True,
     )
 
-    minimum_order_value: Mapped[Decimal] = mapped_column(
+    min_order_value: Mapped[Decimal] = mapped_column(
         Numeric(24, 12),
         nullable=False,
     )

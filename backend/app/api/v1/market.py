@@ -1,9 +1,11 @@
-from sqlalchemy import select
+# from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
-from app.models.asset import Asset
+# from app.models.asset import Asset
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.services.binance_market_service import binance_market_service
+from app.services.market_service import MarketService
+from app.repositories.exchange_setting_repository import ExchangeSettingRepository
 
 router = APIRouter(prefix="/market", tags=["Market"])
 
@@ -11,13 +13,7 @@ router = APIRouter(prefix="/market", tags=["Market"])
 @router.get("/assets")
 async def get_market_assets():
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Asset)
-            .where(Asset.is_active.is_(True))
-            .order_by(Asset.symbol)
-        )
-
-        assets = result.scalars().all()
+        assets = await MarketService.get_assets(db)
 
         return [
             {
@@ -26,7 +22,6 @@ async def get_market_assets():
                 "name": asset.name,
                 "asset_type": asset.asset_type,
                 "decimal_places": asset.decimal_places,
-                "is_active": asset.is_active,
                 "deposit_enabled": asset.deposit_enabled,
                 "withdrawal_enabled": asset.withdrawal_enabled,
                 "trading_enabled": asset.trading_enabled,
@@ -34,20 +29,77 @@ async def get_market_assets():
             }
             for asset in assets
         ]
-    
+
+@router.get("/pairs")
+async def get_market_pairs():
+    async with AsyncSessionLocal() as db:
+        pairs = await MarketService.get_active_pairs(db)
+
+        return [
+            {
+                "id": str(pair.id),
+                "pair_code": pair.pair_code,
+                "display_name": pair.display_name,
+                "base_asset": pair.base_asset.symbol,
+                "quote_asset": pair.quote_asset.symbol,
+                "price_precision": pair.price_precision,
+                "quantity_precision": pair.quantity_precision,
+                "tick_size": str(pair.tick_size),
+                "step_size": str(pair.step_size),
+                "min_order_quantity": str(pair.min_order_quantity),
+                "max_order_quantity": (
+                    str(pair.max_order_quantity)
+                    if pair.max_order_quantity
+                    else None
+                ),
+                "min_order_value": str(pair.min_order_value),
+                "is_default": pair.is_default,
+                "status": pair.status,
+            }
+            for pair in pairs
+        ]
+
+
+@router.get("/default-market")
+async def get_default_market():
+    async with AsyncSessionLocal() as db:
+
+        symbol = await MarketService.get_default_market(db)
+
+        return {"default_market": symbol}
+
+
 @router.get("/tickers")
 async def get_market_tickers():
     return binance_market_service.snapshot()
 
 
 @router.get("/candles")
-async def get_market_candles(symbol: str = "BTCUSDT", interval: str = "1m", limit: int = 200):
+async def get_market_candles(
+    symbol: str | None = None,
+    interval: str = "1m",
+    limit: int = 200,
+):
+    async with AsyncSessionLocal() as db:
+
+        if symbol is None:
+            symbol = await MarketService.get_default_market(db)
+
     try:
-        return await binance_market_service.history_candles(symbol, interval, limit)
+        return await binance_market_service.history_candles(
+            symbol,
+            interval,
+            limit,
+        )
+
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to load market candles") from exc
+        raise HTTPException(400, detail=str(exc))
+
+    except Exception:
+        raise HTTPException(
+            502,
+            detail="Unable to load market candles",
+        )
 
 
 @router.websocket("/ws")
@@ -75,3 +127,15 @@ async def candle_websocket(websocket: WebSocket, symbol: str, interval: str):
             await websocket.send_json(candle)
     except WebSocketDisconnect:
         return
+
+@router.get("/settings/public")
+async def get_public_market_settings():
+
+    async with AsyncSessionLocal() as db:
+
+        settings = await ExchangeSettingRepository.list_public_settings(db)
+
+        return {
+            setting.key: setting.value
+            for setting in settings
+        }    

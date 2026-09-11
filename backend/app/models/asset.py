@@ -35,11 +35,11 @@ class Asset(Base):
         nullable=False,
     )
 
-    contract_address: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        unique=False,
-    )
+    # contract_address: Mapped[str | None] = mapped_column(
+    #     String(255),
+    #     nullable=True,
+    #     unique=False,
+    # )
 
     decimal_places: Mapped[int] = mapped_column(
         Integer,
@@ -96,41 +96,41 @@ class Asset(Base):
     accounts: Mapped[list["Account"]] = relationship(
         "Account",
         back_populates="asset",
-        lazy="selectin",
+        lazy="noload",
     )
 
     wallet_addresses: Mapped[list["WalletAddress"]] = relationship(
         "WalletAddress",
         back_populates="asset",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="noload",
     )
 
     deposits: Mapped[list["Deposit"]] = relationship(
         "Deposit",
         back_populates="asset",
-        lazy="selectin",
+        lazy="noload",
     )
 
     withdrawals: Mapped[list["Withdrawal"]] = relationship(
         "Withdrawal",
         back_populates="asset",
-        lazy="selectin",
+        lazy="noload",
     )
 
-    base_orders: Mapped[list["Order"]] = relationship(
-        "Order",
-        foreign_keys="Order.base_asset_id",
-        back_populates="base_asset",
-        lazy="selectin",
-    )
+    # base_orders: Mapped[list["Order"]] = relationship(
+    #     "Order",
+    #     foreign_keys="Order.base_asset_id",
+    #     back_populates="base_asset",
+    #     lazy="selectin",
+    # )
 
-    quote_orders: Mapped[list["Order"]] = relationship(
-        "Order",
-        foreign_keys="Order.quote_asset_id",
-        back_populates="quote_asset",
-        lazy="selectin",
-    )
+    # quote_orders: Mapped[list["Order"]] = relationship(
+    #     "Order",
+    #     foreign_keys="Order.quote_asset_id",
+    #     back_populates="quote_asset",
+    #     lazy="selectin",
+    # )
 
     base_trades: Mapped[list["Trade"]] = relationship(
         "Trade",

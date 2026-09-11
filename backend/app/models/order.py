@@ -52,17 +52,17 @@ class Order(Base):
         back_populates="orders",
     )
 
-    base_asset = relationship(
-        "Asset",
-        foreign_keys=[base_asset_id],
-        back_populates="base_orders",
-    )
+    # base_asset = relationship(
+    #     "Asset",
+    #     foreign_keys=[base_asset_id],
+    #     back_populates="base_orders",
+    # )
 
-    quote_asset = relationship(
-        "Asset",
-        foreign_keys=[quote_asset_id],
-        back_populates="quote_orders"
-    )
+    # quote_asset = relationship(
+    #     "Asset",
+    #     foreign_keys=[quote_asset_id],
+    #     back_populates="quote_orders"
+    # )
 
     buy_trades = relationship(
         "Trade",
