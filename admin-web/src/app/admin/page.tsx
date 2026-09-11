@@ -83,20 +83,40 @@ export default function AdminDashboard() {
     setError("");
 
     try {
-      const [dashboard, deposits, withdrawals] = await Promise.all([
-        adminFetch<Dashboard>("/api/v1/admin/dashboard"),
-        adminFetch<TransactionList>("/api/v1/admin/fiat-deposits?limit=5&offset=0"),
-        adminFetch<TransactionList>("/api/v1/admin/withdrawals?limit=5&offset=0"),
+      const [dashboardRes, depositsRes, withdrawalsRes] = await Promise.all([
+        adminFetch("/api/v1/admin/dashboard"),
+        adminFetch("/api/v1/admin/fiat-deposits?limit=5&offset=0"),
+        adminFetch("/api/v1/admin/withdrawals?limit=5&offset=0"),
       ]);
-      // const d = await dr.json() as Dashboard & { detail?: string };
-      // const deps = await dep.json() as FiatDepositListResponse & { detail?: string };
-      // const wds = await wd.json() as TransactionList & { detail?: string };
-      // if (!dr.ok) throw new Error(d.detail || "Unable to load dashboard");
-      // if (!dep.ok) throw new Error(deps.detail || "Unable to load deposits");
-      // if (!wd.ok) throw new Error(wds.detail || "Unable to load withdrawals");
+
+      const dashboard = (await dashboardRes.json()) as Dashboard & {
+        detail?: string;
+      };
+
+      const deposits = (await depositsRes.json()) as TransactionList & {
+        detail?: string;
+      };
+
+      const withdrawals = (await withdrawalsRes.json()) as TransactionList & {
+        detail?: string;
+      };
+
+      if (!dashboardRes.ok) {
+        throw new Error(dashboard.detail || "Unable to load dashboard");
+      }
+
+      if (!depositsRes.ok) {
+        throw new Error(deposits.detail || "Unable to load deposits");
+      }
+
+      if (!withdrawalsRes.ok) {
+        throw new Error(withdrawals.detail || "Unable to load withdrawals");
+      }
+
       setDashboard(dashboard);
       setDeposits(deposits.items ?? []);
       setWithdrawals(withdrawals.items ?? []);
+      setLastUpdated(new Date());
       setLastUpdated(new Date());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to load dashboard");

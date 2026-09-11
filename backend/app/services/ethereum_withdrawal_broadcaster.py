@@ -255,7 +255,7 @@ class EthereumWithdrawalBroadcaster:
 
                 # Save the primary key before rollback.
                 withdrawal_id = withdrawal.id
-                tx_hash = withdrawal.blockchain_tx_hash
+                
 
                 await db.rollback()
 

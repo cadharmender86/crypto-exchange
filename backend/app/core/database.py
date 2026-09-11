@@ -6,10 +6,21 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
 
+# ---------------------------------------
+# SQLAlchemy Declarative Base
+# ---------------------------------------
+class Base(DeclarativeBase):
+    pass
+
+
+# ---------------------------------------
+# Async Engine
+# ---------------------------------------
 engine: AsyncEngine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
@@ -18,6 +29,10 @@ engine: AsyncEngine = create_async_engine(
     max_overflow=20,
 )
 
+
+# ---------------------------------------
+# Session Factory
+# ---------------------------------------
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -25,10 +40,16 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+# ---------------------------------------
+# FastAPI Dependency
+# ---------------------------------------
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
 
 
+# ---------------------------------------
+# Shutdown Handler
+# ---------------------------------------
 async def close_database() -> None:
     await engine.dispose()

@@ -61,7 +61,7 @@ export function getWalletDashboard() {
 }
 
 export interface DashboardWalletBalance {
-  account_id: string | null;
+  account_id: string;
   asset_id: string;
 
   symbol: string;

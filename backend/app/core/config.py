@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     database_url: str = (
         "postgresql+asyncpg://bitnova:bitnova_password"
-        "@localhost:5432/bitnova"
+        "@postgres:5432/bitnova"
     )
 
     redis_url: str = "redis://localhost:6379/0"

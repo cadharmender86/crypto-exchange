@@ -1,0 +1,65 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+    container_name: bitnova-backend-dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./backend/.env.development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: bitnova-frontend-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+    env_file:
+      - ./frontend/.env.local
+    depends_on:
+      - backend
+
+  admin-web:
+    build:
+      context: ./admin-web
+    container_name: bitnova-admin-dev
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./admin-web:/app
+    env_file:
+      - ./admin-web/.env.local
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:17
+    container_name: bitnova-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bitnova
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bitnova
+    volumes:
+      - postgres_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U bitnova"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: bitnova-redis-dev
+
+volumes:
+  postgres_dev:

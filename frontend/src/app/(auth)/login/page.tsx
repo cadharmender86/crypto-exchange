@@ -1,15 +1,16 @@
 "use client";
 
+import { Suspense, SubmitEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SubmitEvent, useState } from "react";
 import { saveTokens } from "@/lib/auth";
 import { loginUser } from "@/services/auth.service";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const verified = searchParams.get("verified");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,10 +28,7 @@ export default function LoginPage() {
         password,
       });
 
-      saveTokens(
-        response.access_token,
-        response.refresh_token
-      );
+      saveTokens(response.access_token, response.refresh_token);
 
       router.push("/dashboard");
     } catch (err: any) {
@@ -43,23 +41,76 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#070b14] px-4 py-12 text-white">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.03] p-8 shadow-2xl">
-        <Link href="/" className="text-sm text-blue-400 hover:text-blue-300">← Back to BitNova</Link>
-        <h1 className="mt-8 text-3xl font-bold">Welcome back</h1>
-        <p className="mt-2 text-gray-400">Sign in to your BitNova account.</p>
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <label className="block"><span className="text-sm text-gray-300">Email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-blue-500" placeholder="you@example.com" /></label>
-          <label className="block"><span className="text-sm text-gray-300">Password</span><input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-blue-500" placeholder="Your password" /></label>
-          {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
-          <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-500 py-3.5 font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60">{loading ? "Signing in..." : "Sign in"}</button>
-        </form>
-        <p className="mt-6 text-center text-sm text-gray-400">Don&apos;t have an account?{" "}<Link href="/register" className="text-blue-400 hover:text-blue-300">Create one</Link></p>
-      </div>
+        <Link href="/" className="text-sm text-blue-400 hover:text-blue-300">
+          ← Back to BitNova
+        </Link>
 
-      {verified === "true" && (
-        <div className="mb-5 rounded-lg border border-emerald-700 bg-emerald-900/20 p-3 text-sm text-emerald-400">
-          ✓ Email verified successfully. Please sign in.
-        </div>
-      )}
+        <h1 className="mt-8 text-3xl font-bold">Welcome back</h1>
+        <p className="mt-2 text-gray-400">
+          Sign in to your BitNova account.
+        </p>
+
+        {verified === "true" && (
+          <div className="mt-4 rounded-lg border border-emerald-700 bg-emerald-900/20 p-3 text-sm text-emerald-400">
+            ✓ Email verified successfully. Please sign in.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <label className="block">
+            <span className="text-sm text-gray-300">Email</span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-blue-500"
+              placeholder="you@example.com"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm text-gray-300">Password</span>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-blue-500"
+              placeholder="Your password"
+            />
+          </label>
+
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-blue-500 py-3.5 font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-400">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-blue-400 hover:text-blue-300">
+            Create one
+          </Link>
+        </p>
+      </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="text-white p-8">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

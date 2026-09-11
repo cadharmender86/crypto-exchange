@@ -60,6 +60,8 @@ from app.models.blockchain_cursor import BlockchainCursor
 from app.models.email_otp import EmailOTP
 from app.models.kyc_profile import KYCProfile
 from app.models.kyc_document import KYCDocument
+from .trading_pair import TradingPair
+from app.models.exchange_setting import ExchangeSetting
 
 __all__ = [
     # Base

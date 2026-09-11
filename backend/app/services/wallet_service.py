@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.account import Account
 from app.models.wallet import Wallet
-from app.models.asset import Asset 
+from app.models.asset import Asset
+from app.services.exchange_setting_service import ExchangeSettingService
 
 
 class WalletService:
@@ -133,10 +134,15 @@ class WalletService:
         *,
         user_id: UUID,
     ):
+
+        deposits_enabled = await ExchangeSettingService.get_boolean(
+            db,
+            "deposits_enabled",
+        )
         # Load all active assets configured on the exchange.
         assets_result = await db.execute(
             select(Asset)
-            .where(Asset.is_active == True)
+            .where(Asset.is_active.is_(True))
             .order_by(Asset.symbol.asc())
         )
 
@@ -182,4 +188,20 @@ class WalletService:
                 }
             )
 
-        return {"balances": balances}
+        return {
+
+            "exchange": {
+                "deposits_enabled": deposits_enabled,
+            },
+            "balances": balances
+        }
+
+    @staticmethod
+    async def withdrawals_enabled(
+        db: AsyncSession,
+    ) -> bool:
+
+        return await ExchangeSettingService.get_boolean(
+            db,
+            "withdrawals_enabled",
+        )

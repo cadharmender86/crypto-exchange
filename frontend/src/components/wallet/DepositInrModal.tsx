@@ -8,17 +8,14 @@ import { getPaymentHistory } from "@/lib/paymentApi";
 import { createINRDeposit } from "@/services/payment.service";
 import { getDepositAddress } from "@/services/deposit.service";
 // import { createPaymentOrder } from "@/lib/paymentApi";
+import type { DashboardWalletBalance } from "@/services/wallet.service";
+
 
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  asset: {
-    symbol: string;
-    name: string;
-    is_fiat: boolean;
-  } | null;
-
+  asset: DashboardWalletBalance | null;
   // Existing INR callback (keep it)
   onPaymentSuccess: () => Promise<void>;
 

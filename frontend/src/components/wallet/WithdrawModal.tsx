@@ -3,18 +3,12 @@
 import { useEffect, useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import { createWithdrawal } from "@/services/withdrawal.service";
+import type { DashboardWalletBalance } from "@/services/wallet.service";
 import { randomUUID } from "crypto";
 
-type WithdrawModalProps = {
+interface Props {
   open: boolean;
-  asset: {
-    account_id: string;
-    asset_id: string;
-    symbol: string;
-    name: string;
-    available_balance: string;
-    is_fiat: boolean;
-  } | null;
+  asset: DashboardWalletBalance | null;
   onClose: () => void;
   onWithdrawalSuccess: () => Promise<void>;
 };
@@ -23,8 +17,8 @@ export default function WithdrawModal({
   open,
   asset,
   onClose,
-  onWithdrawalSuccess,
-}: WithdrawModalProps) {
+  onWithdrawalSuccess
+}: Props) {
   const [network, setNetwork] = useState("");
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
@@ -185,7 +179,7 @@ export default function WithdrawModal({
           />
 
           <button
-            onClick={() => setAmount(asset.available_balance)}
+            onClick={() => setAmount(asset.available_balance.toString())}
             className="mt-2 text-sm text-green-400 hover:text-green-300"
           >
             Withdraw Max

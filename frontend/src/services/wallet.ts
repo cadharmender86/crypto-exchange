@@ -1,3 +1,4 @@
+import { apiFetch, getAccessToken } from "@/lib/api";
 import type {
   WalletAddressGenerateRequest,
   WalletAddressGenerateResponse,
@@ -7,20 +8,26 @@ import type {
 export async function getReceiveAddress(
   network: string
 ): Promise<ReceiveAddressResponse> {
-  const response = await api.get("/wallets/receive", {
-    params: { network },
-  });
+  const token = getAccessToken() ?? undefined;
 
-  return response.data;
+  return apiFetch<ReceiveAddressResponse>(
+    `/wallets/receive?network=${encodeURIComponent(network)}`,
+    {},
+    token
+  );
 }
 
 export async function generateReceiveAddress(
   payload: WalletAddressGenerateRequest
 ): Promise<WalletAddressGenerateResponse> {
-  const response = await api.post(
-    "/wallets/receive/generate",
-    payload
-  );
+  const token = getAccessToken() ?? undefined;
 
-  return response.data;
+  return apiFetch<WalletAddressGenerateResponse>(
+    "/wallets/receive/generate",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    token
+  );
 }
