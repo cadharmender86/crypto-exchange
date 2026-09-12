@@ -21,7 +21,7 @@ class ExchangeSettingRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def list_all(
+    async def list_settings(
         db: AsyncSession,
     ) -> list[ExchangeSetting]:
 
@@ -45,6 +45,18 @@ class ExchangeSettingRepository:
         )
 
         return list(result.scalars().all())
+
+    @staticmethod
+    async def get_settings_map(
+        db: AsyncSession,
+    ) -> dict[str, str]:
+    
+        settings = await ExchangeSettingRepository.list_settings(db)
+    
+        return {
+            setting.key: setting.value
+            for setting in settings
+        }    
 
     @staticmethod
     async def exists(
@@ -84,6 +96,29 @@ class ExchangeSettingRepository:
         return setting
 
     @staticmethod
+    async def update_value(
+        db: AsyncSession,
+        *,
+        key: str,
+        value: str,
+    ) -> ExchangeSetting:
+
+        setting = await ExchangeSettingRepository.get_by_key(
+            db,
+            key,
+        )
+
+        if setting is None:
+            raise ValueError("Exchange setting not found.")
+
+        setting.value = value
+
+        await db.flush()
+        await db.refresh(setting)
+
+        return setting
+
+    @staticmethod
     async def delete(
         db: AsyncSession,
         setting: ExchangeSetting,
@@ -91,3 +126,5 @@ class ExchangeSettingRepository:
 
         await db.delete(setting)
         await db.flush()
+
+    

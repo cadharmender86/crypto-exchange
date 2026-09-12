@@ -1,5 +1,8 @@
 from contextlib import asynccontextmanager
 
+import traceback
+from starlette.responses import JSONResponse
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -24,30 +27,46 @@ async def lifespan(app: FastAPI):
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        try:
+            response = await call_next(request)
 
-        if is_production:
-            response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
-                "object-src 'none'; connect-src 'self'"
-            )
-        else:
-            response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
-                "object-src 'none'; connect-src 'self' http://localhost:8000 ws://localhost:8000; "
-                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-                "img-src 'self' data: https://fastapi.tiangolo.com"
-            )
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Referrer-Policy"] = "no-referrer"
 
-        if request.url.scheme == "https":
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
+            if is_production:
+                response.headers["Content-Security-Policy"] = (
+                    "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+                    "object-src 'none'; connect-src 'self'"
+                )
+            else:
+                response.headers["Content-Security-Policy"] = (
+                    "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+                    "object-src 'none'; connect-src 'self' http://localhost:8000 ws://localhost:8000; "
+                    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                    "img-src 'self' data: https://fastapi.tiangolo.com"
+                )
+
+            if request.url.scheme == "https":
+                response.headers["Strict-Transport-Security"] = (
+                    "max-age=31536000; includeSubDomains"
+                )
+
+            return response
+
+        except Exception as exc:
+            print("\n========== SECURITY MIDDLEWARE ERROR ==========")
+            traceback.print_exc()
+            print("==============================================\n")
+
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": type(exc).__name__,
+                    "message": str(exc),
+                },
             )
-        return response
 
 
 is_production = settings.environment.strip().lower() == "production"

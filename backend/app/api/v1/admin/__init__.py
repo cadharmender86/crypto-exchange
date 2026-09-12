@@ -1,3 +1,3 @@
-# from app.api.v1.admin.router import router
+from app.api.v1.admin.exchange import router as exchange_router
 
-# __all__ = ["router"]
+__all__ = ["exchange_router"]

@@ -43,11 +43,13 @@ AsyncSessionLocal = async_sessionmaker(
 # ---------------------------------------
 # FastAPI Dependency
 # ---------------------------------------
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db():
+    print(">>> get_db CALLED")
+
     async with AsyncSessionLocal() as session:
+        print(">>> session OPENED")
         yield session
-
-
+        print(">>> session CLOSED")
 # ---------------------------------------
 # Shutdown Handler
 # ---------------------------------------
