@@ -54,13 +54,13 @@ class Trade(Base):
 
     buy_order = relationship(
         "Order",
-        foreign_keys="Trade.buy_order_id",
+        foreign_keys=[buy_order_id],
         back_populates="buy_trades",
     )
 
     sell_order = relationship(
         "Order",
-        foreign_keys="Trade.sell_order_id",
+        foreign_keys=[sell_order_id],
         back_populates="sell_trades",
     )
 
