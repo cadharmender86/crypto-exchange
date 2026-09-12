@@ -5,9 +5,9 @@ import pytest_asyncio
 
 from app.core.database import AsyncSessionLocal
 from app.models.asset import Asset
-from app.models.wallet import Wallet
+from app.models.account import Account
 from app.core.constants import AssetType
-
+from app.models.user import User
 
 @pytest_asyncio.fixture
 async def db():
@@ -16,12 +16,10 @@ async def db():
     Each test gets its own transaction which is rolled back.
     """
     async with AsyncSessionLocal() as session:
-        transaction = await session.begin()
         try:
             yield session
         finally:
-            await transaction.rollback()
-            await session.close()
+            await session.rollback()
 
 
 @pytest_asyncio.fixture
@@ -43,20 +41,38 @@ async def asset(db):
 
     return asset
 
-
 @pytest_asyncio.fixture
-async def wallet(db, asset):
-    wallet = Wallet(
+async def user(db):
+    user = User(
         id=uuid4(),
-        user_id=uuid4(),
-        asset_id=asset.id,
-        balance_total=Decimal("1000"),
-        balance_available=Decimal("1000"),
-        balance_locked=Decimal("0"),
+        email=f"test-{uuid4().hex[:8]}@bitnova.test",
+        password_hash="dummy_hash",
+        is_active=True,
+        is_verified=True,
+        two_factor_enabled=False,
     )
 
-    db.add(wallet)
+    db.add(user)
     await db.flush()
-    await db.refresh(wallet)
+    await db.refresh(user)
 
-    return wallet
+    return user
+
+
+@pytest_asyncio.fixture
+async def account(db, asset, user):
+    account = Account(
+        id=uuid4(),
+        user_id=user.id,
+        asset_id=asset.id,
+        account_type="CUSTOMER",
+        available_balance=Decimal("1000"),
+        locked_balance=Decimal("0"),
+        status="ACTIVE",
+    )
+
+    db.add(account)
+    await db.flush()
+    await db.refresh(account)
+
+    return account

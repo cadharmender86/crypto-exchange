@@ -29,6 +29,7 @@ from app.models.deposit import Deposit
 from app.models.withdrawal import Withdrawal
 
 # Trading Engine
+from app.models.trading_pair import TradingPair
 from app.models.order import Order
 from app.models.trade import Trade
 
@@ -98,6 +99,7 @@ __all__ = [
     "Withdrawal",
 
     # Trading
+    "TradingPair",
     "Order",
     "Trade",
 
