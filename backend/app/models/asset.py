@@ -118,19 +118,19 @@ class Asset(Base):
         lazy="selectin",
     )
 
-    base_orders: Mapped[list["Order"]] = relationship(
-        "Order",
-        foreign_keys="Order.base_asset_id",
-        back_populates="base_asset",
-        lazy="selectin",
-    )
+    # base_orders: Mapped[list["Order"]] = relationship(
+    #     "Order",
+    #     foreign_keys="Order.base_asset_id",
+    #     back_populates="base_asset",
+    #     lazy="selectin",
+    # )
 
-    quote_orders: Mapped[list["Order"]] = relationship(
-        "Order",
-        foreign_keys="Order.quote_asset_id",
-        back_populates="quote_asset",
-        lazy="selectin",
-    )
+    # quote_orders: Mapped[list["Order"]] = relationship(
+    #     "Order",
+    #     foreign_keys="Order.quote_asset_id",
+    #     back_populates="quote_asset",
+    #     lazy="selectin",
+    # )
 
     base_trades: Mapped[list["Trade"]] = relationship(
         "Trade",
